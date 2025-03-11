@@ -260,16 +260,70 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 // 设置指定的拖拽规则
                 .setDraggable(springBackDraggable)
                 .setOnClickListener(android.R.id.icon, new EasyWindow.OnClickListener<ImageView>() {
-
+    
                     @Override
                     public void onClick(EasyWindow<?> easyWindow, ImageView view) {
                         Toaster.show("我被点击了");
-                        // 点击后跳转到拨打电话界面
-                        // Intent intent = new Intent(Intent.ACTION_DIAL);
-                        // intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        // toast.startActivity(intent);
-                        // 安卓 10 在后台跳转 Activity 需要额外适配
-                        // https://developer.android.google.cn/about/versions/10/privacy/changes#background-activity-starts
+    
+                        // 获取当前屏幕截图
+                        View rootView = easyWindow.getWindow().getDecorView().getRootView();
+                        rootView.setDrawingCacheEnabled(true);
+                        Bitmap bitmap = Bitmap.createBitmap(rootView.getDrawingCache());
+                        rootView.setDrawingCacheEnabled(false);
+    
+                        // 将截图保存到文件
+                        File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
+                        try (FileOutputStream fos = new FileOutputStream(screenshotFile)) {
+                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+    
+                        // 创建上传任务
+                        new Thread(() -> {
+                            try {
+                                // 创建 HTTP 请求
+                                URL url = new URL("http://10.243.3.100:8000");
+                                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                                connection.setRequestMethod("POST");
+                                connection.setDoOutput(true);
+                                connection.setRequestProperty("Content-Type", "image/png");
+    
+                                // 发送文件
+                                try (OutputStream os = connection.getOutputStream();
+                                     FileInputStream fis = new FileInputStream(screenshotFile)) {
+                                    byte[] buffer = new byte[1024];
+                                    int bytesRead;
+                                    while ((bytesRead = fis.read(buffer)) != -1) {
+                                        os.write(buffer, 0, bytesRead);
+                                    }
+                                }
+    
+                                // 读取响应
+                                try (InputStream is = connection.getInputStream();
+                                     ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                                    byte[] buffer = new byte[1024];
+                                    int bytesRead;
+                                    while ((bytesRead = is.read(buffer)) != -1) {
+                                        baos.write(buffer, 0, bytesRead);
+                                    }
+                                    byte[] responseBytes = baos.toByteArray();
+    
+                                    // 将响应图像显示在悬浮窗中
+                                    Bitmap responseBitmap = BitmapFactory.decodeByteArray(responseBytes, 0, responseBytes.length);
+                                    runOnUiThread(() -> {
+                                        ImageView imageView = new ImageView(application);
+                                        imageView.setImageBitmap(responseBitmap);
+                                        EasyWindow.with(application)
+                                                .setContentView(imageView)
+                                                .setGravity(Gravity.CENTER)
+                                                .show();
+                                    });
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }).start();
                     }
                 })
                 .setOnLongClickListener(android.R.id.icon, new EasyWindow.OnLongClickListener<View>() {
@@ -281,4 +335,5 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 })
                 .show();
     }
+
 }
