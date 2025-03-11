@@ -1,5 +1,16 @@
 package com.hjq.window.demo;
-
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import android.view.View;
 import android.app.Application;
 import android.content.Intent;
 import android.net.Uri;
