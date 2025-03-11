@@ -21,4 +21,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Build
-        path: ./app/build/outputs/apk/
+        path: ./
+        
