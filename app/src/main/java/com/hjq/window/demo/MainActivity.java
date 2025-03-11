@@ -277,7 +277,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         Toaster.show("我被点击了");
     
                         // 获取当前屏幕截图
-                        View rootView = easyWindow.getWindow().getDecorView().getRootView();
+                        View rootView = easyWindow.getView().getRootView();
                         rootView.setDrawingCacheEnabled(true);
                         Bitmap bitmap = Bitmap.createBitmap(rootView.getDrawingCache());
                         rootView.setDrawingCacheEnabled(false);
@@ -294,20 +294,27 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         new Thread(() -> {
                             try {
                                 // 创建 HTTP 请求
-                                URL url = new URL("http://10.243.3.100:8000");
+                                URL url = new URL("http://127.0.0.1:8000/translate/with-form/image/stream");
                                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                                 connection.setRequestMethod("POST");
                                 connection.setDoOutput(true);
-                                connection.setRequestProperty("Content-Type", "image/png");
+                                connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=*****");
     
-                                // 发送文件
+                                // 配置参数
+                                String config = "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }";
+    
+                                // 发送文件和参数
                                 try (OutputStream os = connection.getOutputStream();
                                      FileInputStream fis = new FileInputStream(screenshotFile)) {
+                                    os.write(("--*****\r\nContent-Disposition: form-data; name=\"config\"\r\n\r\n" + config + "\r\n").getBytes());
+                                    os.write(("--*****\r\nContent-Disposition: form-data; name=\"image\"; filename=\"screenshot.png\"\r\nContent-Type: image/png\r\n\r\n").getBytes());
+    
                                     byte[] buffer = new byte[1024];
                                     int bytesRead;
                                     while ((bytesRead = fis.read(buffer)) != -1) {
                                         os.write(buffer, 0, bytesRead);
                                     }
+                                    os.write("\r\n--*****--\r\n".getBytes());
                                 }
     
                                 // 读取响应
@@ -321,8 +328,12 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                     byte[] responseBytes = baos.toByteArray();
     
                                     // 将响应图像显示在悬浮窗中
-                                    Bitmap responseBitmap = BitmapFactory.decodeByteArray(responseBytes, 0, responseBytes.length);
-                                    runOnUiThread(() -> {
+                                    String responseString = new String(responseBytes);
+                                    String base64Data = responseString.substring(responseString.indexOf("base64,") + 7);
+                                    byte[] decodedBytes = Base64.decode(base64Data, Base64.DEFAULT);
+                                    Bitmap responseBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+    
+                                    new Handler(Looper.getMainLooper()).post(() -> {
                                         ImageView imageView = new ImageView(application);
                                         imageView.setImageBitmap(responseBitmap);
                                         EasyWindow.with(application)
