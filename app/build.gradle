@@ -54,6 +54,7 @@ dependencies {
     implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
 
     implementation project(':library')
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
 
     // AndroidX 库：https://github.com/androidx/androidx
     implementation 'androidx.appcompat:appcompat:1.4.0'
