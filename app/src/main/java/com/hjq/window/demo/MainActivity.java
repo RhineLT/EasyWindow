@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -21,10 +22,12 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
 import com.google.android.material.snackbar.Snackbar;
 import com.hjq.bar.OnTitleBarListener;
 import com.hjq.bar.TitleBar;
@@ -35,29 +38,27 @@ import com.hjq.toast.Toaster;
 import com.hjq.window.EasyWindow;
 import com.hjq.window.draggable.MovingDraggable;
 import com.hjq.window.draggable.SpringBackDraggable;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+import android.Manifest;
+
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import android.Manifest;
-import android.graphics.Canvas;
 
-/**
- *    author : Android 轮子哥
- *    github : https://github.com/getActivity/EasyWindow
- *    time   : 2019/01/04
- *    desc   : Demo 使用案例
- */
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
+    private static WeakReference<MainActivity> currentInstance = new WeakReference<>(null);
     private static final int REQUEST_CODE_SCREEN_CAPTURE = 1001;
     private MediaProjectionManager mediaProjectionManager;
     private MediaProjection mediaProjection;
@@ -69,6 +70,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        currentInstance = new WeakReference<>(this);
 
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         requestScreenCapturePermission();
@@ -94,6 +96,18 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 startActivity(intent);
             }
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        currentInstance.clear();
+        if (virtualDisplay != null) {
+            virtualDisplay.release();
+        }
+        if (mediaProjection != null) {
+            mediaProjection.stop();
+        }
     }
 
     private void requestScreenCapturePermission() {
@@ -138,7 +152,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
 
     private void captureFrame() {
         Bitmap bitmap = Bitmap.createBitmap(surfaceView.getWidth(), surfaceView.getHeight(), Bitmap.Config.ARGB_8888);
-        surfaceView.draw(new Canvas(bitmap));
+        Canvas canvas = new Canvas(bitmap);
+        surfaceView.draw(canvas);
         saveBitmap(bitmap);
     }
 
@@ -194,7 +209,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
 
     @Override
     public void onBackPressed() {
-        // 在某些手机上面无法通过返回键销毁当前 Activity 对象，从而无法触发 LeakCanary 回收对象
         finish();
     }
 
@@ -228,9 +242,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     .setAnimStyle(R.style.IOSAnimStyle)
                     .setImageDrawable(android.R.id.icon, R.drawable.ic_dialog_tip_finish)
                     .setText(android.R.id.message, "点我消失")
-                    // 设置外层是否能被触摸
                     .setOutsideTouchable(false)
-                    // 设置窗口背景阴影强度
                     .setBackgroundDimAmount(0.5f)
                     .setOnClickListener(android.R.id.message, new EasyWindow.OnClickListener<TextView>() {
 
@@ -324,7 +336,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     .setAnimStyle(R.style.IOSAnimStyle)
                     .setImageDrawable(android.R.id.icon, R.drawable.ic_dialog_tip_finish)
                     .setText(android.R.id.message, "点我消失")
-                    // 设置成可拖拽的
                     .setDraggable(new MovingDraggable())
                     .setOnClickListener(android.R.id.message, new EasyWindow.OnClickListener<TextView>() {
 
@@ -343,7 +354,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
 
                         @Override
                         public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
-                            // 这里最好要做一下延迟显示，因为在某些手机（华为鸿蒙 3.0）上面立即显示会导致显示效果有一些瑕疵
                             runOnUiThread(() -> showGlobalWindow(getApplication()));
                         }
 
@@ -360,16 +370,12 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
 
         } else if (viewId == R.id.btn_main_cancel_all) {
 
-            // 关闭当前正在显示的悬浮窗
-            // EasyWindow.cancelAll();
-            // 回收当前正在显示的悬浮窗
             EasyWindow.recycleAllWindow();
 
         } else if (viewId == R.id.btn_main_utils) {
 
             EasyWindow.with(this)
                     .setDuration(1000)
-                    // 将 Toaster 中的 View 转移给 EasyWindow 来显示
                     .setContentView(Toaster.getStyle().createView(this))
                     .setAnimStyle(R.style.ScaleAnimStyle)
                     .setText(android.R.id.message, "就问你溜不溜")
@@ -379,27 +385,21 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
-    /**
-     * 显示全局弹窗
-     */
     public static void showGlobalWindow(Application application) {
         SpringBackDraggable springBackDraggable = new SpringBackDraggable(SpringBackDraggable.ORIENTATION_HORIZONTAL);
         springBackDraggable.setAllowMoveToScreenNotch(false);
-        // 传入 Application 表示这个是一个全局的 Toast
         EasyWindow.with(application)
                 .setContentView(R.layout.window_phone)
                 .setGravity(Gravity.END | Gravity.BOTTOM)
                 .setYOffset(200)
-                // 设置指定的拖拽规则
                 .setDraggable(springBackDraggable)
                 .setOnClickListener(android.R.id.icon, new EasyWindow.OnClickListener<ImageView>() {
-
                     @Override
                     public void onClick(EasyWindow<?> easyWindow, ImageView view) {
                         Toaster.show("我被点击了");
-                        // 修正类型转换错误
-                        if (application instanceof MainActivity) {
-                            ((MainActivity) application).captureFrame();
+                        MainActivity activity = currentInstance.get();
+                        if (activity != null) {
+                            activity.captureFrame();
                         }
                     }
                 })
