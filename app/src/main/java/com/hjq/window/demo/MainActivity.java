@@ -257,13 +257,28 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private boolean uploadImage(File file) throws IOException {
         Log.d("RhineLT", "准备上传文件: " + file.getAbsolutePath() + 
             ", 大小: " + file.length() + " bytes");
-        OkHttpClient client = new OkHttpClient.Builder()
-                .sslSocketFactory(createInsecureSSLContext().getSocketFactory(), (hostname, session) -> true)
-                .hostnameVerifier((hostname, session) -> true)
-                .addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
-                .build();
+            OkHttpClient client = new OkHttpClient.Builder()
+            .sslSocketFactory(
+                createInsecureSSLContext().getSocketFactory(),
+                new X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+    
+                    @Override
+                    public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+    
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[0];
+                    }
+                }
+            )
+            .hostnameVerifier((hostname, session) -> true)
+            .addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build();
+    
         String configJson = "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }";
         
         RequestBody body = new MultipartBody.Builder()
@@ -309,15 +324,24 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private SSLContext createInsecureSSLContext() throws Exception {
         TrustManager[] trustAllCerts = new TrustManager[]{
             new X509TrustManager() {
+                @Override
                 public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+    
+                @Override
                 public void checkServerTrusted(X509Certificate[] chain, String authType) {}
-                public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+    
+                @Override
+                public X509Certificate[] getAcceptedIssuers() {
+                    return new X509Certificate[0];
+                }
             }
         };
+        
         SSLContext sslContext = SSLContext.getInstance("SSL");
         sslContext.init(null, trustAllCerts, new SecureRandom());
         return sslContext;
     }
+    
     private void saveTranslatedImage(byte[] imageBytes, String originalName) {
         Log.d("RhineLT", "开始保存翻译图片，原始文件名: " + originalName + 
             ", 数据长度: " + imageBytes.length + " bytes");
