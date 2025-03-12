@@ -325,10 +325,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private static void captureFrame(Application application, EasyWindow<?> easyWindow) {
         Image image = null;
         try {
-            Log.d("RhineLT", new String("开始获取图像".getBytes(), "UTF-8"));
+            Log.d("RhineLT", "开始获取图像");
             image = imageReader.acquireLatestImage();
             if (image != null) {
-                Log.d("RhineLT", new String("图像获取成功".getBytes(), "UTF-8"));
+                Log.d("RhineLT", "图像获取成功");
                 Image.Plane[] planes = image.getPlanes();
                 ByteBuffer buffer = planes[0].getBuffer();
                 int width = image.getWidth();
@@ -341,16 +341,16 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
                 try (FileOutputStream fos = new FileOutputStream(screenshotFile)) {
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                    Log.d("RhineLT", new String(("截图保存成功: " + screenshotFile.getAbsolutePath()).getBytes(), "UTF-8"));
+                    Log.d("RhineLT", "截图保存成功: " + screenshotFile.getAbsolutePath());
                     uploadScreenshot(application, screenshotFile);
                 } catch (IOException e) {
-                    Log.e("RhineLT", new String("保存截图时出错".getBytes(), "UTF-8"), e);
+                    Log.e("RhineLT", "保存截图时出错", e);
                 }
             } else {
-                Log.e("RhineLT", new String("图像为空".getBytes(), "UTF-8"));
+                Log.e("RhineLT", "图像为空");
             }
         } catch (Exception e) {
-            Log.e("RhineLT", new String("捕获图像时出错".getBytes(), "UTF-8"), e);
+            Log.e("RhineLT", "捕获图像时出错", e);
             if (image != null) {
                 image.close();
             }
