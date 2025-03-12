@@ -321,8 +321,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             return;
         }
         
-
-        
         new Thread(() -> {
             try {
                 String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -333,6 +331,14 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     out.flush();
                     Log.d("RhineLT", "Translation saved successfully: " + file.getAbsolutePath());
                     showToast("保存成功: " + file.getName());
+                    
+                    // 调用系统打开图像
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    Uri uri = Uri.fromFile(file);
+                    intent.setDataAndType(uri, "image/png");
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(intent);
+                    
                 }
             } catch (Exception e) {
                 Log.e("RhineLT", "Failed to save: " + e.getMessage(), e);
