@@ -1,16 +1,30 @@
 package com.hjq.window.demo;
 
 import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.PixelFormat;
+import android.hardware.display.DisplayManager;
+import android.hardware.display.VirtualDisplay;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.util.DisplayMetrics;
 import android.view.Gravity;
+import android.view.Surface;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import com.google.android.material.snackbar.Snackbar;
 import com.hjq.bar.OnTitleBarListener;
 import com.hjq.bar.TitleBar;
@@ -21,6 +35,17 @@ import com.hjq.toast.Toaster;
 import com.hjq.window.EasyWindow;
 import com.hjq.window.draggable.MovingDraggable;
 import com.hjq.window.draggable.SpringBackDraggable;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -31,10 +56,20 @@ import java.util.List;
  */
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
+    private static final int REQUEST_CODE_SCREEN_CAPTURE = 1001;
+    private MediaProjectionManager mediaProjectionManager;
+    private MediaProjection mediaProjection;
+    private VirtualDisplay virtualDisplay;
+    private SurfaceView surfaceView;
+    private Surface surface;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        requestScreenCapturePermission();
 
         findViewById(R.id.btn_main_anim).setOnClickListener(this);
         findViewById(R.id.btn_main_duration).setOnClickListener(this);
@@ -57,6 +92,102 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 startActivity(intent);
             }
         });
+    }
+
+    private void requestScreenCapturePermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CODE_SCREEN_CAPTURE);
+        } else {
+            startScreenCapture();
+        }
+    }
+
+    private void startScreenCapture() {
+        Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
+        startActivityForResult(captureIntent, REQUEST_CODE_SCREEN_CAPTURE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
+            if (resultCode == RESULT_OK) {
+                mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
+                setupVirtualDisplay();
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private void setupVirtualDisplay() {
+        DisplayMetrics metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        int screenDensity = metrics.densityDpi;
+        int screenWidth = metrics.widthPixels;
+        int screenHeight = metrics.heightPixels;
+
+        surfaceView = new SurfaceView(this);
+        surface = surfaceView.getHolder().getSurface();
+
+        virtualDisplay = mediaProjection.createVirtualDisplay("ScreenCapture",
+                screenWidth, screenHeight, screenDensity,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                surface, null, null);
+    }
+
+    private void captureFrame() {
+        Bitmap bitmap = Bitmap.createBitmap(surfaceView.getWidth(), surfaceView.getHeight(), Bitmap.Config.ARGB_8888);
+        surfaceView.draw(new Canvas(bitmap));
+        saveBitmap(bitmap);
+    }
+
+    private void saveBitmap(Bitmap bitmap) {
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        File file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "IMG_" + timeStamp + ".png");
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            uploadImage(file);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void uploadImage(File file) {
+        OkHttpClient client = new OkHttpClient();
+        MediaType mediaType = MediaType.parse("multipart/form-data");
+        RequestBody body = new MultipartBody.Builder().setType(MultipartBody.FORM)
+                .addFormDataPart("config", "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }")
+                .addFormDataPart("image", file.getName(), RequestBody.create(mediaType, file))
+                .build();
+        Request request = new Request.Builder()
+                .url("http://47.94.2.169:777/translate/with-form/image")
+                .post(body)
+                .addHeader("Accept", "*/*")
+                .addHeader("Accept-Encoding", "gzip, deflate, br")
+                .addHeader("User-Agent", "PostmanRuntime-ApipostRuntime/1.1.0")
+                .addHeader("Connection", "keep-alive")
+                .addHeader("content-type", "multipart/form-data")
+                .build();
+
+        new Thread(() -> {
+            try {
+                Response response = client.newCall(request).execute();
+                if (response.isSuccessful()) {
+                    saveTranslatedImage(response.body().bytes(), file.getName());
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private void saveTranslatedImage(byte[] imageBytes, String originalFileName) {
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        File file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "IMG_" + timeStamp + "_trans.png");
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            out.write(imageBytes);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -264,12 +395,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     @Override
                     public void onClick(EasyWindow<?> easyWindow, ImageView view) {
                         Toaster.show("我被点击了");
-                        // 点击后跳转到拨打电话界面
-                        // Intent intent = new Intent(Intent.ACTION_DIAL);
-                        // intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        // toast.startActivity(intent);
-                        // 安卓 10 在后台跳转 Activity 需要额外适配
-                        // https://developer.android.google.cn/about/versions/10/privacy/changes#background-activity-starts
+                        ((MainActivity) application).captureFrame();
                     }
                 })
                 .setOnLongClickListener(android.R.id.icon, new EasyWindow.OnLongClickListener<View>() {
