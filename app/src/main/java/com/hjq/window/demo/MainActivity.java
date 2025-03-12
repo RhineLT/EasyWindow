@@ -293,6 +293,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         rootView.setDrawingCacheEnabled(true);
                         Bitmap bitmap = Bitmap.createBitmap(rootView.getDrawingCache());
                         rootView.setDrawingCacheEnabled(false);
+                        Log.d("RhineLT", "截图成功");
     
                         // 显示步骤2
                         EasyWindow.with(application)
@@ -305,6 +306,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
                         try (FileOutputStream fos = new FileOutputStream(screenshotFile)) {
                             bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                            Log.d("RhineLT", "截图文件保存成功: " + screenshotFile.getAbsolutePath());
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -348,7 +350,11 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                 });
     
                                 // 记录请求信息
-                                Log.d("RhineLT", "发送请求: " + request.toString());
+                                try {
+                                    Log.d("RhineLT", "发送请求: " + URLEncoder.encode(request.toString(), "UTF-8"));
+                                } catch (UnsupportedEncodingException e) {
+                                    e.printStackTrace();
+                                }
     
                                 Response response = client.newCall(request).execute();
                                 if (response.isSuccessful()) {
