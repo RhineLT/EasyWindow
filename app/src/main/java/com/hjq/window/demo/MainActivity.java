@@ -323,23 +323,33 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     }
 
     private static void captureFrame(Application application, EasyWindow<?> easyWindow) {
-        Image image = imageReader.acquireLatestImage();
-        if (image != null) {
-            Image.Plane[] planes = image.getPlanes();
-            ByteBuffer buffer = planes[0].getBuffer();
-            int width = image.getWidth();
-            int height = image.getHeight();
-            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-            bitmap.copyPixelsFromBuffer(buffer);
-            image.close();
-
-            // Save bitmap to file and upload
-            File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
-            try (FileOutputStream fos = new FileOutputStream(screenshotFile)) {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                uploadScreenshot(application, screenshotFile);
-            } catch (IOException e) {
-                e.printStackTrace();
+        Image image = null;
+        try {
+            image = imageReader.acquireLatestImage();
+            if (image != null) {
+                Image.Plane[] planes = image.getPlanes();
+                ByteBuffer buffer = planes[0].getBuffer();
+                int width = image.getWidth();
+                int height = image.getHeight();
+                Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                bitmap.copyPixelsFromBuffer(buffer);
+                image.close();
+    
+                // Save bitmap to file and upload
+                File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
+                try (FileOutputStream fos = new FileOutputStream(screenshotFile)) {
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                    uploadScreenshot(application, screenshotFile);
+                } catch (IOException e) {
+                    Log.e("MainActivity", "Error saving screenshot", e);
+                }
+            } else {
+                Log.e("MainActivity", "Image is null");
+            }
+        } catch (Exception e) {
+            Log.e("MainActivity", "Error capturing frame", e);
+            if (image != null) {
+                image.close();
             }
         }
     }
