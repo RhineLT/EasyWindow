@@ -325,10 +325,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private static void captureFrame(Application application, EasyWindow<?> easyWindow) {
         Image image = null;
         try {
-            Log.d("MainActivity", "开始获取图像");
+            Log.d("RhineLT", "开始获取图像");
             image = imageReader.acquireLatestImage();
             if (image != null) {
-                Log.d("MainActivity", "图像获取成功");
+                Log.d("RhineLT", "图像获取成功");
                 Image.Plane[] planes = image.getPlanes();
                 ByteBuffer buffer = planes[0].getBuffer();
                 int width = image.getWidth();
@@ -341,7 +341,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
                 try (FileOutputStream fos = new FileOutputStream(screenshotFile)) {
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                    Log.d("MainActivity", "截图保存成功: " + screenshotFile.getAbsolutePath());
+                    Log.d("RhineLT", "截图保存成功: " + screenshotFile.getAbsolutePath());
                     uploadScreenshot(application, screenshotFile);
                 } catch (IOException e) {
                     Log.e("RhineLT", "保存截图时出错", e);
@@ -360,7 +360,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private static void uploadScreenshot(Application application, File screenshotFile) {
         new Thread(() -> {
             try {
-                Log.d("MainActivity", "开始上传截图");
+                Log.d("RhineLT", "开始上传截图");
                 OkHttpClient client = new OkHttpClient();
     
                 MediaType mediaType = MediaType.parse("multipart/form-data; boundary=---011000010111000001101001");
@@ -390,12 +390,12 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 });
     
                 // 记录请求信息
-                Log.d("MainActivity", "发送请求: " + request.toString());
+                Log.d("RhineLT", "发送请求: " + request.toString());
     
                 Response response = client.newCall(request).execute();
                 if (response.isSuccessful()) {
                     String responseString = response.body().string();
-                    Log.d("MainActivity", "响应成功: " + responseString);
+                    Log.d("RhineLT", "响应成功: " + responseString);
     
                     String base64Data = responseString.substring(responseString.indexOf("base64,") + 7);
                     byte[] decodedBytes = Base64.decode(base64Data, Base64.DEFAULT);
@@ -419,7 +419,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                 .show();
                     });
                 } else {
-                    Log.d("MainActivity", "响应失败: " + response.toString());
+                    Log.d("RhineLT", "响应失败: " + response.toString());
                 }
             } catch (IOException e) {
                 Log.e("RhineLT", "上传截图时出错", e);
