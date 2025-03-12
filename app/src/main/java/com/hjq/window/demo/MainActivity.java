@@ -118,7 +118,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startScreenCapture();
             } else {
-                showToast("需要存储权限才能保存截图");
+                showToast("Permissions are required to save screenshots.");
             }
         }
     }
@@ -134,8 +134,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
                     setupVirtualDisplay();
                 } catch (Exception e) {
-                    Log.e("RhineLT", "初始化失败: " + e.getMessage(), e);
-                    showToast("屏幕捕获初始化失败");
+                    Log.e("RhineLT", "Initialization failed: " + e.getMessage(), e);
+                    showToast("Screen capture initialization failed");
                 }
             }
         }
@@ -156,10 +156,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     screenWidth, screenHeight, screenDensity,
                     DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                     imageReader.getSurface(), null, null);
-            Log.d("RhineLT", "VirtualDisplay创建成功");
+            Log.d("RhineLT", "VirtualDisplay creation successful");
         } catch (Exception e) {
-            Log.e("RhineLT", "创建VirtualDisplay失败: " + e.getMessage(), e);
-            showToast("无法创建虚拟显示");
+            Log.e("RhineLT", "Failed to create VirtualDisplay: " + e.getMessage(), e);
+            showToast("Unable to create virtual display");
         }
     }
     private void safeCaptureFrame() {
@@ -167,8 +167,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             try {
                 Image image = imageReader.acquireLatestImage();
                 if (image == null) {
-                    Log.w("RhineLT", "获取图像失败: imageReader返回null");
-                    showToast("获取图像失败");
+                    Log.w("RhineLT", "Failed to acquire image: imageReader returns null");
+                    showToast("Failed to acquire image");
                     return;
                 }
                 final Bitmap bitmap = imageToBitmap(image);
@@ -178,18 +178,18 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         try {
                             File file = saveBitmapToFile(bitmap);
                             if (file != null) {
-                                Log.d("RhineLT", "截图保存成功，路径: " + file.getAbsolutePath());
+                                Log.d("RhineLT", "Screenshot saved successfully, path:" + file.getAbsolutePath());
                                 uploadImageWithRetry(file, 3);
                             }
                         } catch (Exception e) {
-                            Log.e("RhineLT", "处理失败: " + e.getMessage(), e);
-                            showToast("保存或上传失败");
+                            Log.e("RhineLT", "Processing failed: " + e.getMessage(), e);
+                            showToast("Failed to save or upload");
                         }
                     });
                 }
             } catch (Exception e) {
-                Log.e("RhineLT", "捕获异常: " + e.getMessage(), e);
-                showToast("截图失败");
+                Log.e("RhineLT", "Capture failed: " + e.getMessage(), e);
+                showToast("Screenshot failed");
             }
         }).start();
     }
@@ -207,10 +207,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     height, 
                     Bitmap.Config.ARGB_8888);
             bitmap.copyPixelsFromBuffer(buffer);
-            Log.d("RhineLT", "图像转换成功，尺寸: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+            Log.d("RhineLT", "Image conversion successful, dimensions: " + bitmap.getWidth() + "x" + bitmap.getHeight());
             return bitmap;
         } catch (Exception e) {
-            Log.e("RhineLT", "转换失败: " + e.getMessage(), e);
+            Log.e("RhineLT", "Conversion failed: " + e.getMessage(), e);
             return null;
         }
     }
@@ -218,13 +218,13 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         File directory = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         if (!directory.exists() && !directory.mkdirs()) {
-            throw new IOException("无法创建目录: " + directory.getAbsolutePath());
+            throw new IOException("Unable to create directory: " + directory.getAbsolutePath());
         }
         File file = new File(directory, "SCREENSHOT_" + timeStamp + ".png");
         try (FileOutputStream out = new FileOutputStream(file)) {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
             out.flush();
-            Log.d("RhineLT", "文件保存成功: " + file.length() + " bytes");
+            Log.d("RhineLT", "File saved successfully: " + file.length() + " bytes");
             return file;
         }
     }
@@ -235,28 +235,28 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             
             while (retryCount < maxRetries && !success) {
                 try {
-                    Log.d("RhineLT", "上传尝试 (第 " + (retryCount+1) + " 次)");
+                    Log.d("RhineLT", "Upload attempt (" + (retryCount+1) + ") time)");
                     success = uploadImage(file);
                     if (!success) {
-                        Log.w("RhineLT", "尝试 " + (retryCount + 1) + " 失败");
+                        Log.w("RhineLT", "Attempted "+(retryCount+1)+" failures");
                         retryCount++;
                         Thread.sleep(2000);
                     }
                 } catch (Exception e) {
-                    Log.e("RhineLT", "上传异常: " + 
+                    Log.e("RhineLT", "Upload error: " + 
                         e.getClass().getSimpleName() + " - " + e.getMessage());
                     retryCount++;
                 }
             }
             if (!success) {
                 showToast("上传失败，请检查网络后重试");
-                Log.e("RhineLT", "最终上传失败，已达最大重试次数");
+                Log.e("RhineLT", "The upload failed due to reaching the maximum number of retries.");
             }
         }).start();
     }
     private boolean uploadImage(File file) throws IOException {
-        Log.d("RhineLT", "准备上传文件: " + file.getAbsolutePath() + 
-            ", 大小: " + file.length() + " bytes");
+        Log.d("RhineLT", "Ready to upload file: " + file.getAbsolutePath() + 
+            ", Size: " + file.length() + " bytes");
         OkHttpClient client = new OkHttpClient.Builder()
             .addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -271,7 +271,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .addFormDataPart("image", file.getName(), 
                     RequestBody.create(MediaType.parse("image/*"), file))
                 .build();
-        Log.d("RhineLT", "构建Multipart请求体，字段数量: " + body.contentLength() + " bytes");
+        Log.d("RhineLT", "Build Multipart request body, number of fields:" + body.contentLength() + " bytes");
         Request request = new Request.Builder()
                 .url("https://47.94.2.169:4680/translate/with-form/image")
                 .post(body)
@@ -280,19 +280,19 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .addHeader("Connection", "keep-alive")
                 .addHeader("User-Agent", "PostmanRuntime-ApipostRuntime/1.1.0")
                 .build();
-        Log.d("RhineLT", "发起请求 => URL: " + request.url());
+        Log.d("RhineLT", "Initiate request => URL: " + request.url());
         Log.d("RhineLT", "Headers: " + request.headers());
         try (Response response = client.newCall(request).execute()) {
-            Log.d("RhineLT", "响应码: " + response.code());
-            Log.d("RhineLT", "响应头: " + response.headers());
+            Log.d("RhineLT", "Response Code: " + response.code());
+            Log.d("RhineLT", "Response header: " + response.headers());
             
             if (response.body() != null) {
                 byte[] bytes = response.body().bytes();
-                Log.d("RhineLT", "收到响应数据，长度: " + bytes.length + " bytes");
+                Log.d("RhineLT", "Received response data length:" + bytes.length + " bytes");
                 
                 if (bytes.length < 100) {
                     String bodyStr = new String(bytes, StandardCharsets.UTF_8);
-                    Log.e("RhineLT", "无效响应内容: " + bodyStr);
+                    Log.e("RhineLT", "Invalid response content:" + bodyStr);
                     return false;
                 }
                 
@@ -301,16 +301,16 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             }
             return false;
         } catch (IOException e) {
-            Log.e("RhineLT", "网络请求异常: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            Log.e("RhineLT", "Network request error:" + e.getClass().getSimpleName() + " - " + e.getMessage());
             throw e;
         }
     }
     private void saveTranslatedImage(byte[] imageBytes, String originalName) {
-        Log.d("RhineLT", "开始保存翻译图片，原始文件名: " + originalName + 
-            ", 数据长度: " + imageBytes.length + " bytes");
+        Log.d("RhineLT", "Start saving translated image, original file name:" + originalName + 
+            ", Data length: " + imageBytes.length + " bytes");
         
         if (!isValidImage(imageBytes)) {
-            Log.e("RhineLT", "无效的图片数据");
+            Log.e("RhineLT", "Invalid image data");
             showToast("收到无效的图片数据");
             return;
         }
@@ -323,11 +323,11 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 try (FileOutputStream out = new FileOutputStream(file)) {
                     out.write(imageBytes);
                     out.flush();
-                    Log.d("RhineLT", "翻译结果保存成功: " + file.getAbsolutePath());
+                    Log.d("RhineLT", "Translation saved successfully: " + file.getAbsolutePath());
                     showToast("保存成功: " + file.getName());
                 }
             } catch (Exception e) {
-                Log.e("RhineLT", "保存失败: " + e.getMessage(), e);
+                Log.e("RhineLT", "Failed to save: " + e.getMessage(), e);
                 showToast("翻译结果保存失败");
             }
         }).start();
@@ -337,7 +337,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             BitmapFactory.decodeByteArray(data, 0, data.length);
             return true;
         } catch (Exception e) {
-            Log.e("RhineLT", "图片数据解析失败: " + e.getMessage());
+            Log.e("RhineLT", "Image data parsing failed: " + e.getMessage());
             return false;
         }
     }
@@ -352,20 +352,20 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             if (imageReader != null) {
                 imageReader.close();
                 imageReader = null;
-                Log.d("RhineLT", "ImageReader已释放");
+                Log.d("RhineLT", "ImageReader has been released");
             }
             if (virtualDisplay != null) {
                 virtualDisplay.release();
                 virtualDisplay = null;
-                Log.d("RhineLT", "VirtualDisplay已释放");
+                Log.d("RhineLT", "VirtualDisplayhas been released");
             }
             if (mediaProjection != null) {
                 mediaProjection.stop();
                 mediaProjection = null;
-                Log.d("RhineLT", "MediaProjection已停止");
+                Log.d("RhineLT", "MediaProjectionhas been stoped");
             }
         } catch (Exception e) {
-            Log.e("RhineLT", "释放资源失败: " + e.getMessage(), e);
+            Log.e("RhineLT", "Resource release failed: " + e.getMessage(), e);
         }
     }
 
