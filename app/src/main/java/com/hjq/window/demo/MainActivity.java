@@ -280,7 +280,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             if (resultCode == Activity.RESULT_OK) {
                 mediaProjection = projectionManager.getMediaProjection(resultCode, data);
                 setupVirtualDisplay();
-                showGlobalWindow(getApplication());
+                showGlobalWindow(this);
             } else {
                 Toaster.show("录制权限被拒绝");
             }
@@ -296,11 +296,11 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 imageReader.getSurface(), null, null);
     }
 
-    public static void showGlobalWindow(Application application) {
+    public static void showGlobalWindow(MainActivity activity) {
         SpringBackDraggable springBackDraggable = new SpringBackDraggable(SpringBackDraggable.ORIENTATION_HORIZONTAL);
         springBackDraggable.setAllowMoveToScreenNotch(false);
         // 传入 Application 表示这个是一个全局的 Toast
-        EasyWindow.with(application)
+        EasyWindow.with(activity.getApplication())
                 .setContentView(R.layout.window_phone)
                 .setGravity(Gravity.END | Gravity.BOTTOM)
                 .setYOffset(200)
@@ -310,7 +310,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
 
                     @Override
                     public void onClick(EasyWindow<?> easyWindow, ImageView view) {
-                        captureFrame(application, easyWindow);
+                        captureFrame(activity, easyWindow);
                     }
                 })
                 .setOnLongClickListener(android.R.id.icon, new EasyWindow.OnLongClickListener<View>() {
@@ -321,12 +321,9 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     }
                 })
                 .show();
-        
-        // 启动录屏
-        ((MainActivity) application).startScreenCapture();
     }
 
-    private static void captureFrame(Application application, EasyWindow<?> easyWindow) {
+    private static void captureFrame(MainActivity activity, EasyWindow<?> easyWindow) {
         Image image = null;
         try {
             Log.d("RhineLT", "开始获取图像");
@@ -342,11 +339,11 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 image.close();
     
                 // Save bitmap to file and upload
-                File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
+                File screenshotFile = new File(activity.getCacheDir(), "screenshot.png");
                 try (FileOutputStream fos = new FileOutputStream(screenshotFile)) {
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
                     Log.d("RhineLT", "截图保存成功: " + screenshotFile.getAbsolutePath());
-                    uploadScreenshot(application, screenshotFile);
+                    uploadScreenshot(activity, screenshotFile);
                 } catch (IOException e) {
                     Log.e("RhineLT", "保存截图时出错", e);
                 }
