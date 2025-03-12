@@ -382,11 +382,11 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     /**
      * 显示全局弹窗
      */
-    public static void showGlobalWindow(Context context) {
+    public static void showGlobalWindow(Application application) {
         SpringBackDraggable springBackDraggable = new SpringBackDraggable(SpringBackDraggable.ORIENTATION_HORIZONTAL);
         springBackDraggable.setAllowMoveToScreenNotch(false);
         // 传入 Application 表示这个是一个全局的 Toast
-        EasyWindow.with(context.getApplicationContext())
+        EasyWindow.with(application)
                 .setContentView(R.layout.window_phone)
                 .setGravity(Gravity.END | Gravity.BOTTOM)
                 .setYOffset(200)
@@ -398,8 +398,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     public void onClick(EasyWindow<?> easyWindow, ImageView view) {
                         Toaster.show("我被点击了");
                         // 修正类型转换错误
-                        if (context instanceof MainActivity) {
-                            ((MainActivity) context).captureFrame();
+                        if (application instanceof MainActivity) {
+                            ((MainActivity) application).captureFrame();
                         }
                     }
                 })
