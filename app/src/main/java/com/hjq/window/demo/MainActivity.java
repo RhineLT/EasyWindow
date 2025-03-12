@@ -64,6 +64,7 @@ import java.nio.ByteBuffer;
  *    time   : 2019/01/04
  *    desc   : Demo 使用案例
  */
+
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final int REQUEST_CODE_SCREEN_CAPTURE = 1001;
@@ -320,6 +321,9 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     }
                 })
                 .show();
+        
+        // 启动录屏
+        ((MainActivity) application).startScreenCapture();
     }
 
     private static void captureFrame(Application application, EasyWindow<?> easyWindow) {
