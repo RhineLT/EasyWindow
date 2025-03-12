@@ -3,6 +3,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import android.util.Log;
 import java.io.FileInputStream;
 import android.os.Handler;
 import android.os.Looper;
