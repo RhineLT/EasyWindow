@@ -1,5 +1,5 @@
 package com.hjq.window.demo;
-
+import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import java.io.ByteArrayOutputStream;
