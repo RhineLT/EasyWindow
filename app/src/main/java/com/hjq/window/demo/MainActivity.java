@@ -325,38 +325,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private static void captureFrame(Application application, EasyWindow<?> easyWindow) {
         Image image = null;
         try {
-            image = imageReader.acquireLatestImage();
-            if (image != null) {
-                Image.Plane[] planes = image.getPlanes();
-                ByteBuffer buffer = planes[0].getBuffer();
-                int width = image.getWidth();
-                int height = image.getHeight();
-                Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-                bitmap.copyPixelsFromBuffer(buffer);
-                image.close();
-    
-                // Save bitmap to file and upload
-                File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
-                try (FileOutputStream fos = new FileOutputStream(screenshotFile)) {
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                    uploadScreenshot(application, screenshotFile);
-                } catch (IOException e) {
-                    Log.e("RhineLT", "Error saving screenshot", e);
-                }
-            } else {
-                Log.e("RhineLT", "Image is null");
-            }
-        } catch (Exception e) {
-            Log.e("RhineLT", "Error capturing frame", e);
-            if (image != null) {
-                image.close();
-            }
-        }
-    }
-
-    private static void captureFrame(Application application, EasyWindow<?> easyWindow) {
-        Image image = null;
-        try {
             Log.d("MainActivity", "开始获取图像");
             image = imageReader.acquireLatestImage();
             if (image != null) {
