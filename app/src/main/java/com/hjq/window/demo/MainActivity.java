@@ -1,4 +1,5 @@
 package com.hjq.window.demo;
+
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import java.io.ByteArrayOutputStream;
@@ -11,6 +12,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
 import java.io.FileOutputStream;
+import android.graphics.Rect;
+import android.view.PixelCopy;
+import android.view.Window;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -40,6 +44,19 @@ import com.hjq.window.draggable.MovingDraggable;
 import com.hjq.window.draggable.SpringBackDraggable;
 import java.util.List;
 import okhttp3.*;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import android.media.projection.MediaProjectionManager;
+import android.media.projection.MediaProjection;
+import android.content.Context;
+import android.graphics.ImageFormat;
+import android.hardware.display.DisplayManager;
+import android.hardware.display.VirtualDisplay;
+import android.media.ImageReader;
+import android.media.Image;
+import java.nio.ByteBuffer;
 
 /**
  *    author : Android 轮子哥
@@ -49,10 +66,18 @@ import okhttp3.*;
  */
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
+    private static final int REQUEST_CODE_SCREEN_CAPTURE = 1001;
+    private MediaProjectionManager projectionManager;
+    private MediaProjection mediaProjection;
+    private VirtualDisplay virtualDisplay;
+    private static ImageReader imageReader;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        projectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
         findViewById(R.id.btn_main_anim).setOnClickListener(this);
         findViewById(R.id.btn_main_duration).setOnClickListener(this);
@@ -221,28 +246,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     .show();
 
         } else if (viewId == R.id.btn_main_global) {
-
-            XXPermissions.with(MainActivity.this)
-                    .permission(Permission.SYSTEM_ALERT_WINDOW)
-                    .request(new OnPermissionCallback() {
-
-                        @Override
-                        public void onGranted(@NonNull List<String> permissions, boolean allGranted) {
-                            // 这里最好要做一下延迟显示，因为在某些手机（华为鸿蒙 3.0）上面立即显示会导致显示效果有一些瑕疵
-                            runOnUiThread(() -> showGlobalWindow(getApplication()));
-                        }
-
-                        @Override
-                        public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
-                            EasyWindow.with(MainActivity.this)
-                                    .setDuration(1000)
-                                    .setContentView(R.layout.window_hint)
-                                    .setImageDrawable(android.R.id.icon, R.drawable.ic_dialog_tip_error)
-                                    .setText(android.R.id.message, "请先授予悬浮窗权限")
-                                    .show();
-                        }
-                    });
-
+            startScreenCapture();
         } else if (viewId == R.id.btn_main_cancel_all) {
 
             // 关闭当前正在显示的悬浮窗
@@ -264,9 +268,33 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
-    /**
-     * 显示全局弹窗
-     */
+    private void startScreenCapture() {
+        Intent captureIntent = projectionManager.createScreenCaptureIntent();
+        startActivityForResult(captureIntent, REQUEST_CODE_SCREEN_CAPTURE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
+            if (resultCode == Activity.RESULT_OK) {
+                mediaProjection = projectionManager.getMediaProjection(resultCode, data);
+                setupVirtualDisplay();
+                showGlobalWindow(getApplication());
+            } else {
+                Toaster.show("录制权限被拒绝");
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private void setupVirtualDisplay() {
+        imageReader = ImageReader.newInstance(1080, 1920, ImageFormat.JPEG, 2);
+        virtualDisplay = mediaProjection.createVirtualDisplay("ScreenCapture",
+                1080, 1920, getResources().getDisplayMetrics().densityDpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                imageReader.getSurface(), null, null);
+    }
+
     public static void showGlobalWindow(Application application) {
         SpringBackDraggable springBackDraggable = new SpringBackDraggable(SpringBackDraggable.ORIENTATION_HORIZONTAL);
         springBackDraggable.setAllowMoveToScreenNotch(false);
@@ -278,119 +306,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 // 设置指定的拖拽规则
                 .setDraggable(springBackDraggable)
                 .setOnClickListener(android.R.id.icon, new EasyWindow.OnClickListener<ImageView>() {
-    
+
                     @Override
                     public void onClick(EasyWindow<?> easyWindow, ImageView view) {
-                        Toaster.show("我被点击了");
-    
-                        // 显示步骤1
-                        EasyWindow.with(application)
-                                .setDuration(1000)
-                                .setContentView(R.layout.window_hint)
-                                .setText(android.R.id.message, "步骤1：获取当前屏幕截图")
-                                .show();
-    
-                        // 获取当前屏幕截图
-                        View rootView = easyWindow.getContentView().getRootView();
-                        rootView.setDrawingCacheEnabled(true);
-                        Bitmap bitmap = Bitmap.createBitmap(rootView.getDrawingCache());
-                        rootView.setDrawingCacheEnabled(false);
-                        Log.d("RhineLT", "截图成功");
-    
-                        // 显示步骤2
-                        EasyWindow.with(application)
-                                .setDuration(1000)
-                                .setContentView(R.layout.window_hint)
-                                .setText(android.R.id.message, "步骤2：将截图保存到文件")
-                                .show();
-    
-                        // 将截图保存到文件
-                        File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
-                        try (FileOutputStream fos = new FileOutputStream(screenshotFile)) {
-                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                            Log.d("RhineLT", "截图文件保存成功: " + screenshotFile.getAbsolutePath());
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-    
-                        // 显示步骤3
-                        EasyWindow.with(application)
-                                .setDuration(1000)
-                                .setContentView(R.layout.window_hint)
-                                .setText(android.R.id.message, "步骤3：创建上传任务")
-                                .show();
-    
-                        // 创建上传任务
-                        new Thread(() -> {
-                            try {
-                                OkHttpClient client = new OkHttpClient();
-    
-                                MediaType mediaType = MediaType.parse("multipart/form-data; boundary=---011000010111000001101001");
-                                MultipartBody.Builder builder = new MultipartBody.Builder()
-                                        .setType(MultipartBody.FORM)
-                                        .addFormDataPart("config", "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }")
-                                        .addFormDataPart("image", "screenshot.png", RequestBody.create(mediaType, screenshotFile));
-    
-                                RequestBody body = builder.build();
-                                Request request = new Request.Builder()
-                                        .url("http://47.94.2.169:777/translate/with-form/image")
-                                        .post(body)
-                                        .addHeader("Accept", "*/*")
-                                        .addHeader("Accept-Encoding", "gzip, deflate, br")
-                                        .addHeader("User-Agent", "PostmanRuntime-ApipostRuntime/1.1.0")
-                                        .addHeader("Connection", "keep-alive")
-                                        .addHeader("content-type", "multipart/form-data; boundary=---011000010111000001101001")
-                                        .build();
-    
-                                // 显示步骤4
-                                new Handler(Looper.getMainLooper()).post(() -> {
-                                    EasyWindow.with(application)
-                                            .setDuration(1000)
-                                            .setContentView(R.layout.window_hint)
-                                            .setText(android.R.id.message, "步骤4：发送请求")
-                                            .show();
-                                });
-    
-                                // 记录请求信息
-                                try {
-                                    Log.d("RhineLT", "发送请求: " + URLEncoder.encode(request.toString(), "UTF-8"));
-                                } catch (UnsupportedEncodingException e) {
-                                    e.printStackTrace();
-                                }
-    
-                                Response response = client.newCall(request).execute();
-                                if (response.isSuccessful()) {
-                                    String responseString = response.body().string();
-                                    Log.d("RhineLT", "响应成功: " + responseString);
-    
-                                    String base64Data = responseString.substring(responseString.indexOf("base64,") + 7);
-                                    byte[] decodedBytes = Base64.decode(base64Data, Base64.DEFAULT);
-                                    Bitmap responseBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
-    
-                                    // 显示步骤5
-                                    new Handler(Looper.getMainLooper()).post(() -> {
-                                        EasyWindow.with(application)
-                                                .setDuration(1000)
-                                                .setContentView(R.layout.window_hint)
-                                                .setText(android.R.id.message, "步骤5：处理响应")
-                                                .show();
-                                    });
-    
-                                    new Handler(Looper.getMainLooper()).post(() -> {
-                                        ImageView imageView = new ImageView(application);
-                                        imageView.setImageBitmap(responseBitmap);
-                                        EasyWindow.with(application)
-                                                .setContentView(imageView)
-                                                .setGravity(Gravity.CENTER)
-                                                .show();
-                                    });
-                                } else {
-                                    Log.d("RhineLT", "响应失败: " + response.toString());
-                                }
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }).start();
+                        captureFrame(application, easyWindow);
                     }
                 })
                 .setOnLongClickListener(android.R.id.icon, new EasyWindow.OnLongClickListener<View>() {
@@ -401,5 +320,101 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     }
                 })
                 .show();
+    }
+
+    private static void captureFrame(Application application, EasyWindow<?> easyWindow) {
+        Image image = imageReader.acquireLatestImage();
+        if (image != null) {
+            Image.Plane[] planes = image.getPlanes();
+            ByteBuffer buffer = planes[0].getBuffer();
+            int width = image.getWidth();
+            int height = image.getHeight();
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            bitmap.copyPixelsFromBuffer(buffer);
+            image.close();
+
+            // Save bitmap to file and upload
+            File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
+            try (FileOutputStream fos = new FileOutputStream(screenshotFile)) {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                uploadScreenshot(application, screenshotFile);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static void uploadScreenshot(Application application, File screenshotFile) {
+        // ...existing upload code...
+        new Thread(() -> {
+            try {
+                OkHttpClient client = new OkHttpClient();
+
+                MediaType mediaType = MediaType.parse("multipart/form-data; boundary=---011000010111000001101001");
+                MultipartBody.Builder builder = new MultipartBody.Builder()
+                        .setType(MultipartBody.FORM)
+                        .addFormDataPart("config", "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }")
+                        .addFormDataPart("image", "screenshot.png", RequestBody.create(mediaType, screenshotFile));
+
+                RequestBody body = builder.build();
+                Request request = new Request.Builder()
+                        .url("http://47.94.2.169:777/translate/with-form/image")
+                        .post(body)
+                        .addHeader("Accept", "*/*")
+                        .addHeader("Accept-Encoding", "gzip, deflate, br")
+                        .addHeader("User-Agent", "PostmanRuntime-ApipostRuntime/1.1.0")
+                        .addHeader("Connection", "keep-alive")
+                        .addHeader("content-type", "multipart/form-data; boundary=---011000010111000001101001")
+                        .build();
+
+                // 显示步骤4
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    EasyWindow.with(application)
+                            .setDuration(1000)
+                            .setContentView(R.layout.window_hint)
+                            .setText(android.R.id.message, "步骤4：发送请求")
+                            .show();
+                });
+
+                // 记录请求信息
+                try {
+                    Log.d("RhineLT", "发送请求: " + request.toString());
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
+
+                Response response = client.newCall(request).execute();
+                if (response.isSuccessful()) {
+                    String responseString = response.body().string();
+                    Log.d("RhineLT", "响应成功: " + responseString);
+
+                    String base64Data = responseString.substring(responseString.indexOf("base64,") + 7);
+                    byte[] decodedBytes = Base64.decode(base64Data, Base64.DEFAULT);
+                    Bitmap responseBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+
+                    // 显示步骤5
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        EasyWindow.with(application)
+                                .setDuration(1000)
+                                .setContentView(R.layout.window_hint)
+                                .setText(android.R.id.message, "步骤5：处理响应")
+                                .show();
+                    });
+
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        ImageView imageView = new ImageView(application);
+                        imageView.setImageBitmap(responseBitmap);
+                        EasyWindow.with(application)
+                                .setContentView(imageView)
+                                .setGravity(Gravity.CENTER)
+                                .show();
+                    });
+                } else {
+                    Log.d("RhineLT", "响应失败: " + response.toString());
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 }
