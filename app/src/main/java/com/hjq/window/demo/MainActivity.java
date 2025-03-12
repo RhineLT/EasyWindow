@@ -257,20 +257,21 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private boolean uploadImage(File file) throws IOException {
         Log.d("RhineLT", "准备上传文件: " + file.getAbsolutePath() + 
             ", 大小: " + file.length() + " bytes");
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = new OkHttpClient.Builder()
+            .addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build();
 
-        MediaType mediaType = MediaType.parse("multipart/form-data; boundary=---011000010111000001101001");
         String configJson = "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }";
-        String bodyContent = "-----011000010111000001101001\r\n" +
-                "Content-Disposition: form-data; name=\"config\"\r\n\r\n" +
-                configJson + "\r\n" +
-                "-----011000010111000001101001\r\n" +
-                "Content-Disposition: form-data; name=\"image\"; filename=\"" + file.getName() + "\"\r\n" +
-                "Content-Type: image/png\r\n\r\n" +
-                new String(java.nio.file.Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8) + "\r\n" +
-                "-----011000010111000001101001--\r\n\r\n";
-
-        RequestBody body = RequestBody.create(mediaType, bodyContent);
+        
+        RequestBody body = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("config", configJson)
+                .addFormDataPart("image", file.getName(), 
+                    RequestBody.create(MediaType.parse("image/png"), file))
+                .build();
+        Log.d("RhineLT", "构建Multipart请求体，字段数量: " + body.contentLength() + " bytes");
         Request request = new Request.Builder()
                 .url("https://47.94.2.169:4680/translate/with-form/image")
                 .post(body)
