@@ -66,6 +66,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
+import java.util.zip.GZIPInputStream;
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static WeakReference<MainActivity> currentInstance = new WeakReference<>(null);
     private static final int REQUEST_CODE_SCREEN_CAPTURE = 1001;
@@ -289,7 +290,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             Log.d("RhineLT", "Response header: " + response.headers());
             
             if (response.body() != null) {
-                byte[] bytes = response.body().bytes();
+                byte[] bytes;
+                try (GZIPInputStream gzipInputStream = new GZIPInputStream(response.body().byteStream())) {
+                    bytes = gzipInputStream.readAllBytes();
+                }
                 Log.d("RhineLT", "Received response data length:" + bytes.length + " bytes");
                 
                 if (bytes.length < 100) {
