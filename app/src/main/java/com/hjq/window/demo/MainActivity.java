@@ -4,6 +4,9 @@ import android.graphics.BitmapFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Base64;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -277,7 +280,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         Toaster.show("我被点击了");
     
                         // 获取当前屏幕截图
-                        View rootView = easyWindow.getView().getRootView();
+                        View rootView = easyWindow.getContentView().getRootView();
                         rootView.setDrawingCacheEnabled(true);
                         Bitmap bitmap = Bitmap.createBitmap(rootView.getDrawingCache());
                         rootView.setDrawingCacheEnabled(false);
@@ -357,5 +360,4 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 })
                 .show();
     }
-
 }
