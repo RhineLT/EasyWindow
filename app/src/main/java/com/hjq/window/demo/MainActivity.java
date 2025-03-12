@@ -2,6 +2,8 @@ package com.hjq.window.demo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import java.io.ByteArrayOutputStream;
+import java.net.URLEncoder;
+import java.io.UnsupportedEncodingException;
 import java.io.File;
 import android.util.Log;
 import java.io.FileInputStream;
