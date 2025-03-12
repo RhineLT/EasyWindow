@@ -255,8 +255,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         }).start();
     }
     private boolean uploadImage(File file) throws IOException {
-        Log.d("RhineLT", "准备上传文件: " + file.getAbsolutePath() + 
-            ", 大小: " + file.length() + " bytes");
+        Log.d("RhineLT", "Ready to upload file: " + file.getAbsolutePath() + 
+            ", size: " + file.length() + " bytes");
         OkHttpClient client = new OkHttpClient.Builder()
             .addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -271,7 +271,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .addFormDataPart("image", file.getName(), 
                     RequestBody.create(MediaType.parse("image/png"), file))
                 .build();
-        Log.d("RhineLT", "构建Multipart请求体，字段数量: " + body.contentLength() + " bytes");
+        Log.d("RhineLT", "Build Multipart request body, number of fields:" + body.contentLength() + " bytes");
         Request request = new Request.Builder()
                 .url("https://47.94.2.169:4680/translate/with-form/image")
                 .post(body)
@@ -282,19 +282,19 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .addHeader("content-type", "multipart/form-data; boundary=---011000010111000001101001")
                 .build();
 
-        Log.d("RhineLT", "发起请求 => URL: " + request.url());
+        Log.d("RhineLT", "Initiate request => URL: " + request.url());
         Log.d("RhineLT", "Headers: " + request.headers());
         try (Response response = client.newCall(request).execute()) {
-            Log.d("RhineLT", "响应码: " + response.code());
-            Log.d("RhineLT", "响应头: " + response.headers());
+            Log.d("RhineLT", "Response Code: " + response.code());
+            Log.d("RhineLT", "Response header: " + response.headers());
             
             if (response.body() != null) {
                 byte[] bytes = response.body().bytes();
-                Log.d("RhineLT", "收到响应数据，长度: " + bytes.length + " bytes");
+                Log.d("RhineLT", "Received response data length:" + bytes.length + " bytes");
                 
                 if (bytes.length < 100) {
                     String bodyStr = new String(bytes, StandardCharsets.UTF_8);
-                    Log.e("RhineLT", "无效响应内容: " + bodyStr);
+                    Log.e("RhineLT", "Invalid response content:" + bodyStr);
                     return false;
                 }
                 
@@ -303,7 +303,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             }
             return false;
         } catch (IOException e) {
-            Log.e("RhineLT", "网络请求异常: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            Log.e("RhineLT", "Network request error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             throw e;
         }
     }
