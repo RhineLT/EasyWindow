@@ -279,7 +279,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     @Override
                     public void onClick(EasyWindow<?> easyWindow, ImageView view) {
                         Toaster.show("我被点击了");
-
+    
                         // 显示步骤1
                         EasyWindow.with(application)
                                 .setDuration(1000)
@@ -292,7 +292,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         rootView.setDrawingCacheEnabled(true);
                         Bitmap bitmap = Bitmap.createBitmap(rootView.getDrawingCache());
                         rootView.setDrawingCacheEnabled(false);
-
+    
                         // 显示步骤2
                         EasyWindow.with(application)
                                 .setDuration(1000)
@@ -307,7 +307,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
-
+    
                         // 显示步骤3
                         EasyWindow.with(application)
                                 .setDuration(1000)
@@ -336,7 +336,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                         .addHeader("Connection", "keep-alive")
                                         .addHeader("content-type", "multipart/form-data; boundary=---011000010111000001101001")
                                         .build();
-
+    
                                 // 显示步骤4
                                 new Handler(Looper.getMainLooper()).post(() -> {
                                     EasyWindow.with(application)
@@ -346,13 +346,18 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                             .show();
                                 });
     
+                                // 记录请求信息
+                                Log.d("MainActivity", "发送请求: " + request.toString());
+    
                                 Response response = client.newCall(request).execute();
                                 if (response.isSuccessful()) {
                                     String responseString = response.body().string();
+                                    Log.d("MainActivity", "响应成功: " + responseString);
+    
                                     String base64Data = responseString.substring(responseString.indexOf("base64,") + 7);
                                     byte[] decodedBytes = Base64.decode(base64Data, Base64.DEFAULT);
                                     Bitmap responseBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
-
+    
                                     // 显示步骤5
                                     new Handler(Looper.getMainLooper()).post(() -> {
                                         EasyWindow.with(application)
@@ -370,6 +375,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                                 .setGravity(Gravity.CENTER)
                                                 .show();
                                     });
+                                } else {
+                                    Log.d("MainActivity", "响应失败: " + response.toString());
                                 }
                             } catch (IOException e) {
                                 e.printStackTrace();
