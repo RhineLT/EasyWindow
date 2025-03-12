@@ -349,13 +349,13 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         new Thread(() -> {
             try {
                 OkHttpClient client = new OkHttpClient();
-
+    
                 MediaType mediaType = MediaType.parse("multipart/form-data; boundary=---011000010111000001101001");
                 MultipartBody.Builder builder = new MultipartBody.Builder()
                         .setType(MultipartBody.FORM)
                         .addFormDataPart("config", "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }")
                         .addFormDataPart("image", "screenshot.png", RequestBody.create(mediaType, screenshotFile));
-
+    
                 RequestBody body = builder.build();
                 Request request = new Request.Builder()
                         .url("http://47.94.2.169:777/translate/with-form/image")
@@ -366,7 +366,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         .addHeader("Connection", "keep-alive")
                         .addHeader("content-type", "multipart/form-data; boundary=---011000010111000001101001")
                         .build();
-
+    
                 // 显示步骤4
                 new Handler(Looper.getMainLooper()).post(() -> {
                     EasyWindow.with(application)
@@ -375,23 +375,19 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                             .setText(android.R.id.message, "步骤4：发送请求")
                             .show();
                 });
-
+    
                 // 记录请求信息
-                try {
-                    Log.d("RhineLT", "发送请求: " + request.toString());
-                } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
-                }
-
+                Log.d("RhineLT", "发送请求: " + request.toString());
+    
                 Response response = client.newCall(request).execute();
                 if (response.isSuccessful()) {
                     String responseString = response.body().string();
                     Log.d("RhineLT", "响应成功: " + responseString);
-
+    
                     String base64Data = responseString.substring(responseString.indexOf("base64,") + 7);
                     byte[] decodedBytes = Base64.decode(base64Data, Base64.DEFAULT);
                     Bitmap responseBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
-
+    
                     // 显示步骤5
                     new Handler(Looper.getMainLooper()).post(() -> {
                         EasyWindow.with(application)
@@ -400,7 +396,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                 .setText(android.R.id.message, "步骤5：处理响应")
                                 .show();
                     });
-
+    
                     new Handler(Looper.getMainLooper()).post(() -> {
                         ImageView imageView = new ImageView(application);
                         imageView.setImageBitmap(responseBitmap);
