@@ -56,6 +56,10 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+import android.graphics.PixelCopy;
+import android.os.Handler;
+import android.os.Looper;
+
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static WeakReference<MainActivity> currentInstance = new WeakReference<>(null);
@@ -144,6 +148,11 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         surfaceView = new SurfaceView(this);
         surface = surfaceView.getHolder().getSurface();
 
+        if (surface == null) {
+            Toaster.show("Surface is null");
+            return;
+        }
+
         virtualDisplay = mediaProjection.createVirtualDisplay("ScreenCapture",
                 screenWidth, screenHeight, screenDensity,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
@@ -152,9 +161,14 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
 
     private void captureFrame() {
         Bitmap bitmap = Bitmap.createBitmap(surfaceView.getWidth(), surfaceView.getHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        surfaceView.draw(canvas);
-        saveBitmap(bitmap);
+        Handler handler = new Handler(Looper.getMainLooper());
+        PixelCopy.request(surfaceView, bitmap, copyResult -> {
+            if (copyResult == PixelCopy.SUCCESS) {
+                saveBitmap(bitmap);
+            } else {
+                Toaster.show("Failed to capture frame");
+            }
+        }, handler);
     }
 
     private void saveBitmap(Bitmap bitmap) {
