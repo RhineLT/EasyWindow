@@ -320,26 +320,102 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             showToast("收到无效的图片数据");
             return;
         }
-        
-
-        
+    
         new Thread(() -> {
             try {
+                // 保存原始文件（可选）
                 String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
                 File file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
                         "TRANSLATED_" + timeStamp + ".png");
+                
                 try (FileOutputStream out = new FileOutputStream(file)) {
                     out.write(imageBytes);
                     out.flush();
                     Log.d("RhineLT", "Translation saved successfully: " + file.getAbsolutePath());
-                    showToast("保存成功: " + file.getName());
                 }
+    
+                // 显示弹窗（切换到主线程）
+                mainHandler.post(() -> showImagePopup(imageBytes));
+                
             } catch (Exception e) {
                 Log.e("RhineLT", "Failed to save: " + e.getMessage(), e);
                 showToast("翻译结果保存失败");
             }
         }).start();
     }
+    
+    private void showImagePopup(byte[] imageBytes) {
+        try {
+            // 解码图片（添加内存优化）
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
+            
+            // 计算采样率
+            int reqWidth = 1080;  // 弹窗最大宽度
+            int reqHeight = 1920; // 弹窗最大高度
+            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+            
+            // 实际解码
+            options.inJustDecodeBounds = false;
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, options);
+    
+            if (bitmap == null) {
+                showToast("图片加载失败");
+                return;
+            }
+    
+            // 显示弹窗
+            EasyWindow.with(MainActivity.this)
+                    .setContentView(R.layout.window_image)
+                    .setAnimStyle(R.style.ScaleAnimStyle)
+                    .setBackgroundDimAmount(0.5f)
+                    .setImageBitmap(R.id.iv_image, bitmap)
+                    .setOnClickListener(R.id.iv_close, (easyWindow, view) -> {
+                        easyWindow.cancel();
+                        if (!bitmap.isRecycled()) {
+                            bitmap.recycle();
+                        }
+                    })
+                    .setOnWindowLifecycle(new EasyWindow.OnWindowLifecycle() {
+                        @Override
+                        public void onWindowCancel(EasyWindow<?> easyWindow) {
+                            ImageView imageView = easyWindow.findViewById(R.id.iv_image);
+                            if (imageView != null) {
+                                imageView.setImageDrawable(null);
+                            }
+                        }
+                    })
+                    .setOutsideTouchable(true)
+                    .setWidth(WindowManager.LayoutParams.MATCH_PARENT)
+                    .setHeight(WindowManager.LayoutParams.MATCH_PARENT)
+                    .show();
+    
+        } catch (OutOfMemoryError e) {
+            Log.e("RhineLT", "内存不足: " + e.getMessage());
+            showToast("图片太大，请尝试缩小尺寸");
+        }
+    }
+    
+    // 计算图片采样率
+    private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        final int width = options.outWidth;
+        final int height = options.outHeight;
+        int inSampleSize = 1;
+    
+        if (height > reqHeight || width > reqWidth) {
+            final int halfWidth = width / 2;
+            final int halfHeight = height / 2;
+    
+            while ((halfWidth / inSampleSize) >= reqWidth
+                    && (halfHeight / inSampleSize) >= reqHeight) {
+                inSampleSize *= 2;
+            }
+        }
+        return inSampleSize;
+    }
+    
     private boolean isValidImage(byte[] data) {
         try {
             BitmapFactory.decodeByteArray(data, 0, data.length);
