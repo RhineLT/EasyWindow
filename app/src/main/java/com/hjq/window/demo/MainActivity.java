@@ -279,7 +279,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .addHeader("Accept-Encoding", "gzip, deflate, br")
                 .addHeader("User-Agent", "PostmanRuntime-ApipostRuntime/1.1.0")
                 .addHeader("Connection", "keep-alive")
-                .addHeader("content-type", "multipart/form-data; boundary=---011000010111000001101001")
+                .addHeader("content-type", "multipart/form-data;")
                 .build();
 
         Log.d("RhineLT", "Initiate request => URL: " + request.url());
