@@ -321,6 +321,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             return;
         }
         
+        
         new Thread(() -> {
             try {
                 String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
