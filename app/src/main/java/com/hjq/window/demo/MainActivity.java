@@ -1,11 +1,10 @@
 package com.hjq.window.demo;
-
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.PixelFormat;
@@ -29,12 +28,10 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
 import com.google.android.material.snackbar.Snackbar;
 import com.hjq.bar.OnTitleBarListener;
 import com.hjq.bar.TitleBar;
@@ -45,28 +42,31 @@ import com.hjq.toast.Toaster;
 import com.hjq.window.EasyWindow;
 import com.hjq.window.draggable.MovingDraggable;
 import com.hjq.window.draggable.SpringBackDraggable;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import android.Manifest;
-
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
+import okhttp3.logging.HttpLoggingInterceptor;
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
-
     private static WeakReference<MainActivity> currentInstance = new WeakReference<>(null);
     private static final int REQUEST_CODE_SCREEN_CAPTURE = 1001;
     private MediaProjectionManager mediaProjectionManager;
@@ -74,18 +74,13 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private VirtualDisplay virtualDisplay;
     private ImageReader imageReader;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         currentInstance = new WeakReference<>(this);
-
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         checkPermissions();
-
-        // ... 其他视图初始化代码与原始相同 ...
-        // 保持原有视图初始化代码不变
         findViewById(R.id.btn_main_anim).setOnClickListener(this);
         findViewById(R.id.btn_main_duration).setOnClickListener(this);
         findViewById(R.id.btn_main_overlay).setOnClickListener(this);
@@ -97,7 +92,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         findViewById(R.id.btn_main_global).setOnClickListener(this);
         findViewById(R.id.btn_main_utils).setOnClickListener(this);
         findViewById(R.id.btn_main_cancel_all).setOnClickListener(this);
-
         TitleBar titleBar = findViewById(R.id.tb_main_bar);
         titleBar.setOnTitleBarListener(new OnTitleBarListener() {
             @Override
@@ -108,7 +102,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             }
         });
     }
-
     private void checkPermissions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, 
@@ -118,7 +111,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             startScreenCapture();
         }
     }
-
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -130,12 +122,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             }
         }
     }
-
     private void startScreenCapture() {
         Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
         startActivityForResult(captureIntent, REQUEST_CODE_SCREEN_CAPTURE);
     }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
@@ -144,14 +134,13 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
                     setupVirtualDisplay();
                 } catch (Exception e) {
-                    Log.e("RhineLT", "初始化失败: " + e.getMessage());
+                    Log.e("RhineLT", "初始化失败: " + e.getMessage(), e);
                     showToast("屏幕捕获初始化失败");
                 }
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
-
     private void setupVirtualDisplay() {
         try {
             DisplayMetrics metrics = new DisplayMetrics();
@@ -159,54 +148,51 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             int screenDensity = metrics.densityDpi;
             int screenWidth = metrics.widthPixels;
             int screenHeight = metrics.heightPixels;
-
             imageReader = ImageReader.newInstance(
                     screenWidth, screenHeight,
                     PixelFormat.RGBA_8888, 2);
-
             virtualDisplay = mediaProjection.createVirtualDisplay(
                     "ScreenCapture",
                     screenWidth, screenHeight, screenDensity,
                     DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                     imageReader.getSurface(), null, null);
+            Log.d("RhineLT", "VirtualDisplay创建成功");
         } catch (Exception e) {
-            Log.e("RhineLT", "创建失败: " + e.getMessage());
+            Log.e("RhineLT", "创建VirtualDisplay失败: " + e.getMessage(), e);
             showToast("无法创建虚拟显示");
         }
     }
-
     private void safeCaptureFrame() {
         new Thread(() -> {
             try {
                 Image image = imageReader.acquireLatestImage();
                 if (image == null) {
+                    Log.w("RhineLT", "获取图像失败: imageReader返回null");
                     showToast("获取图像失败");
                     return;
                 }
-
                 final Bitmap bitmap = imageToBitmap(image);
                 image.close();
-
                 if (bitmap != null) {
                     mainHandler.post(() -> {
                         try {
                             File file = saveBitmapToFile(bitmap);
                             if (file != null) {
+                                Log.d("RhineLT", "截图保存成功，路径: " + file.getAbsolutePath());
                                 uploadImageWithRetry(file, 3);
                             }
                         } catch (Exception e) {
-                            Log.e("RhineLT", "处理失败: " + e.getMessage());
+                            Log.e("RhineLT", "处理失败: " + e.getMessage(), e);
                             showToast("保存或上传失败");
                         }
                     });
                 }
             } catch (Exception e) {
-                Log.e("RhineLT", "捕获异常: " + e.getMessage());
+                Log.e("RhineLT", "捕获异常: " + e.getMessage(), e);
                 showToast("截图失败");
             }
         }).start();
     }
-
     private Bitmap imageToBitmap(Image image) {
         try {
             Image.Plane[] planes = image.getPlanes();
@@ -216,34 +202,32 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             int pixelStride = planes[0].getPixelStride();
             int rowStride = planes[0].getRowStride();
             int rowPadding = rowStride - pixelStride * width;
-
             Bitmap bitmap = Bitmap.createBitmap(
                     width + rowPadding / pixelStride, 
                     height, 
                     Bitmap.Config.ARGB_8888);
             bitmap.copyPixelsFromBuffer(buffer);
+            Log.d("RhineLT", "图像转换成功，尺寸: " + bitmap.getWidth() + "x" + bitmap.getHeight());
             return bitmap;
         } catch (Exception e) {
-            Log.e("RhineLT", "转换失败: " + e.getMessage());
+            Log.e("RhineLT", "转换失败: " + e.getMessage(), e);
             return null;
         }
     }
-
     private File saveBitmapToFile(Bitmap bitmap) throws IOException {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         File directory = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         if (!directory.exists() && !directory.mkdirs()) {
             throw new IOException("无法创建目录: " + directory.getAbsolutePath());
         }
-
         File file = new File(directory, "SCREENSHOT_" + timeStamp + ".png");
         try (FileOutputStream out = new FileOutputStream(file)) {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
             out.flush();
+            Log.d("RhineLT", "文件保存成功: " + file.length() + " bytes");
             return file;
         }
     }
-
     private void uploadImageWithRetry(File file, int maxRetries) {
         new Thread(() -> {
             int retryCount = 0;
@@ -251,6 +235,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             
             while (retryCount < maxRetries && !success) {
                 try {
+                    Log.d("RhineLT", "上传尝试 (第 " + (retryCount+1) + " 次)");
                     success = uploadImage(file);
                     if (!success) {
                         Log.w("RhineLT", "尝试 " + (retryCount + 1) + " 失败");
@@ -258,92 +243,145 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         Thread.sleep(2000);
                     }
                 } catch (Exception e) {
-                    Log.e("RhineLT", "上传异常: " + e.getMessage());
+                    Log.e("RhineLT", "上传异常: " + 
+                        e.getClass().getSimpleName() + " - " + e.getMessage());
                     retryCount++;
                 }
             }
-
             if (!success) {
-                showToast("上传失败，请重试");
+                showToast("上传失败，请检查网络后重试");
+                Log.e("RhineLT", "最终上传失败，已达最大重试次数");
             }
         }).start();
     }
-
     private boolean uploadImage(File file) throws IOException {
+        Log.d("RhineLT", "准备上传文件: " + file.getAbsolutePath() + 
+            ", 大小: " + file.length() + " bytes");
         OkHttpClient client = new OkHttpClient.Builder()
+                .sslSocketFactory(createInsecureSSLContext().getSocketFactory(), (hostname, session) -> true)
+                .hostnameVerifier((hostname, session) -> true)
+                .addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
                 .build();
-
-        MediaType mediaType = MediaType.parse("multipart/form-data");
+        String configJson = "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }";
+        
         RequestBody body = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("config", "{...}") // 保持原有配置
+                .addFormDataPart("config", configJson)
                 .addFormDataPart("image", file.getName(), 
-                    RequestBody.create(mediaType, file))
+                    RequestBody.create(MediaType.parse("image/*"), file))
                 .build();
-
+        Log.d("RhineLT", "构建Multipart请求体，字段数量: " + body.contentLength() + " bytes");
         Request request = new Request.Builder()
                 .url("https://47.94.2.169:4680/translate/with-form/image")
                 .post(body)
                 .addHeader("Accept", "*/*")
-                // 保持原有header配置
+                .addHeader("Accept-Encoding", "gzip, deflate, br")
+                .addHeader("Connection", "keep-alive")
+                .addHeader("User-Agent", "PostmanRuntime-ApipostRuntime/1.1.0")
                 .build();
-
+        Log.d("RhineLT", "发起请求 => URL: " + request.url());
+        Log.d("RhineLT", "Headers: " + request.headers());
         try (Response response = client.newCall(request).execute()) {
-            if (response.isSuccessful() && response.body() != null) {
+            Log.d("RhineLT", "响应码: " + response.code());
+            Log.d("RhineLT", "响应头: " + response.headers());
+            
+            if (response.body() != null) {
                 byte[] bytes = response.body().bytes();
+                Log.d("RhineLT", "收到响应数据，长度: " + bytes.length + " bytes");
+                
+                if (bytes.length < 100) {
+                    String bodyStr = new String(bytes, StandardCharsets.UTF_8);
+                    Log.e("RhineLT", "无效响应内容: " + bodyStr);
+                    return false;
+                }
+                
                 saveTranslatedImage(bytes, file.getName());
                 return true;
             }
             return false;
+        } catch (IOException e) {
+            Log.e("RhineLT", "网络请求异常: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            throw e;
         }
     }
-
+    private SSLContext createInsecureSSLContext() throws Exception {
+        TrustManager[] trustAllCerts = new TrustManager[]{
+            new X509TrustManager() {
+                public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+                public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+                public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+            }
+        };
+        SSLContext sslContext = SSLContext.getInstance("SSL");
+        sslContext.init(null, trustAllCerts, new SecureRandom());
+        return sslContext;
+    }
     private void saveTranslatedImage(byte[] imageBytes, String originalName) {
+        Log.d("RhineLT", "开始保存翻译图片，原始文件名: " + originalName + 
+            ", 数据长度: " + imageBytes.length + " bytes");
+        
+        if (!isValidImage(imageBytes)) {
+            Log.e("RhineLT", "无效的图片数据");
+            showToast("收到无效的图片数据");
+            return;
+        }
+        
         new Thread(() -> {
             try {
                 String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
                 File file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
                         "TRANSLATED_" + timeStamp + ".png");
-
                 try (FileOutputStream out = new FileOutputStream(file)) {
                     out.write(imageBytes);
                     out.flush();
+                    Log.d("RhineLT", "翻译结果保存成功: " + file.getAbsolutePath());
                     showToast("保存成功: " + file.getName());
                 }
             } catch (Exception e) {
-                Log.e("RhineLT", "保存失败: " + e.getMessage());
+                Log.e("RhineLT", "保存失败: " + e.getMessage(), e);
                 showToast("翻译结果保存失败");
             }
         }).start();
     }
-
+    private boolean isValidImage(byte[] data) {
+        try {
+            BitmapFactory.decodeByteArray(data, 0, data.length);
+            return true;
+        } catch (Exception e) {
+            Log.e("RhineLT", "图片数据解析失败: " + e.getMessage());
+            return false;
+        }
+    }
     @Override
     protected void onDestroy() {
         super.onDestroy();
         currentInstance.clear();
         releaseResources();
     }
-
     private void releaseResources() {
         try {
             if (imageReader != null) {
                 imageReader.close();
                 imageReader = null;
+                Log.d("RhineLT", "ImageReader已释放");
             }
             if (virtualDisplay != null) {
                 virtualDisplay.release();
                 virtualDisplay = null;
+                Log.d("RhineLT", "VirtualDisplay已释放");
             }
             if (mediaProjection != null) {
                 mediaProjection.stop();
                 mediaProjection = null;
+                Log.d("RhineLT", "MediaProjection已停止");
             }
         } catch (Exception e) {
-            Log.e("RhineLT", "释放资源失败: " + e.getMessage());
+            Log.e("RhineLT", "释放资源失败: " + e.getMessage(), e);
         }
     }
+
 
     private void showToast(String message) {
         mainHandler.post(() -> Toaster.show(message));
@@ -517,7 +555,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         SpringBackDraggable draggable = new SpringBackDraggable(
             SpringBackDraggable.ORIENTATION_HORIZONTAL);
         draggable.setAllowMoveToScreenNotch(false);
-
         EasyWindow.with(application)
                 .setContentView(R.layout.window_phone)
                 .setGravity(Gravity.END | Gravity.BOTTOM)
@@ -533,10 +570,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 })
                 .show();
     }
-
     @Override
     public void onBackPressed() {
         super.onBackPressed();
         finish();
     }
+
 }
