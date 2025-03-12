@@ -284,7 +284,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .build();
 
         Request request = new Request.Builder()
-                .url("http://47.94.2.169:777/translate/with-form/image")
+                .url("https://47.94.2.169:4680/translate/with-form/image")
                 .post(body)
                 .addHeader("Accept", "*/*")
                 // 保持原有header配置
