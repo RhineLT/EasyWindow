@@ -47,6 +47,8 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import android.Manifest;
+import android.graphics.Canvas;
 
 /**
  *    author : Android 轮子哥
@@ -395,7 +397,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     @Override
                     public void onClick(EasyWindow<?> easyWindow, ImageView view) {
                         Toaster.show("我被点击了");
-                        ((MainActivity) application).captureFrame();
+                        // 修正类型转换错误
+                        if (application instanceof MainActivity) {
+                            ((MainActivity) application).captureFrame();
+                        }
                     }
                 })
                 .setOnLongClickListener(android.R.id.icon, new EasyWindow.OnLongClickListener<View>() {
