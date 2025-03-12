@@ -67,6 +67,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
 import java.util.zip.GZIPInputStream;
+import androidx.core.content.FileProvider;
 
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static WeakReference<MainActivity> currentInstance = new WeakReference<>(null);
