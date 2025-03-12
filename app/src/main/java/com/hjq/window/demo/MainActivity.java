@@ -67,6 +67,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
 import java.util.zip.GZIPInputStream;
+
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static WeakReference<MainActivity> currentInstance = new WeakReference<>(null);
     private static final int REQUEST_CODE_SCREEN_CAPTURE = 1001;
@@ -311,6 +312,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             throw e;
         }
     }
+
     private void saveTranslatedImage(byte[] imageBytes, String originalName) {
         Log.d("RhineLT", "Start saving translated image, original file name:" + originalName + 
             ", Data length: " + imageBytes.length + " bytes");
@@ -332,9 +334,11 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     Log.d("RhineLT", "Translation saved successfully: " + file.getAbsolutePath());
                     showToast("保存成功: " + file.getName());
                     
+                    // 使用 FileProvider 生成 content URI
+                    Uri uri = FileProvider.getUriForFile(this, "com.hjq.window.demo.fileprovider", file);
+                    
                     // 调用系统打开图像
                     Intent intent = new Intent(Intent.ACTION_VIEW);
-                    Uri uri = Uri.fromFile(file);
                     intent.setDataAndType(uri, "image/png");
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     startActivity(intent);
@@ -346,6 +350,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             }
         }).start();
     }
+
     private boolean isValidImage(byte[] data) {
         try {
             BitmapFactory.decodeByteArray(data, 0, data.length);
