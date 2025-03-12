@@ -279,12 +279,26 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     @Override
                     public void onClick(EasyWindow<?> easyWindow, ImageView view) {
                         Toaster.show("我被点击了");
+
+                        // 显示步骤1
+                        EasyWindow.with(application)
+                                .setDuration(1000)
+                                .setContentView(R.layout.window_hint)
+                                .setText(android.R.id.message, "步骤1：获取当前屏幕截图")
+                                .show();
     
                         // 获取当前屏幕截图
                         View rootView = easyWindow.getContentView().getRootView();
                         rootView.setDrawingCacheEnabled(true);
                         Bitmap bitmap = Bitmap.createBitmap(rootView.getDrawingCache());
                         rootView.setDrawingCacheEnabled(false);
+
+                        // 显示步骤2
+                        EasyWindow.with(application)
+                                .setDuration(1000)
+                                .setContentView(R.layout.window_hint)
+                                .setText(android.R.id.message, "步骤2：将截图保存到文件")
+                                .show();
     
                         // 将截图保存到文件
                         File screenshotFile = new File(application.getCacheDir(), "screenshot.png");
@@ -293,6 +307,13 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
+
+                        // 显示步骤3
+                        EasyWindow.with(application)
+                                .setDuration(1000)
+                                .setContentView(R.layout.window_hint)
+                                .setText(android.R.id.message, "步骤3：创建上传任务")
+                                .show();
     
                         // 创建上传任务
                         new Thread(() -> {
@@ -315,6 +336,15 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                         .addHeader("Connection", "keep-alive")
                                         .addHeader("content-type", "multipart/form-data; boundary=---011000010111000001101001")
                                         .build();
+
+                                // 显示步骤4
+                                new Handler(Looper.getMainLooper()).post(() -> {
+                                    EasyWindow.with(application)
+                                            .setDuration(1000)
+                                            .setContentView(R.layout.window_hint)
+                                            .setText(android.R.id.message, "步骤4：发送请求")
+                                            .show();
+                                });
     
                                 Response response = client.newCall(request).execute();
                                 if (response.isSuccessful()) {
@@ -322,6 +352,15 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                     String base64Data = responseString.substring(responseString.indexOf("base64,") + 7);
                                     byte[] decodedBytes = Base64.decode(base64Data, Base64.DEFAULT);
                                     Bitmap responseBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+
+                                    // 显示步骤5
+                                    new Handler(Looper.getMainLooper()).post(() -> {
+                                        EasyWindow.with(application)
+                                                .setDuration(1000)
+                                                .setContentView(R.layout.window_hint)
+                                                .setText(android.R.id.message, "步骤5：处理响应")
+                                                .show();
+                                    });
     
                                     new Handler(Looper.getMainLooper()).post(() -> {
                                         ImageView imageView = new ImageView(application);
