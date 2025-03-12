@@ -352,9 +352,135 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     // 保持原有按钮点击事件处理逻辑不变
     @Override
     public void onClick(View v) {
-        // ... 原有所有按钮点击处理逻辑保持不变 ...
-        // 注意全局按钮部分需要修改为：
-        if (viewId == R.id.btn_main_global) {
+        final int viewId = v.getId();
+    
+        if (viewId == R.id.btn_main_anim) {
+    
+            EasyWindow.with(this)
+                    .setDuration(1000)
+                    .setContentView(R.layout.window_hint)
+                    .setAnimStyle(R.style.TopAnimStyle)
+                    .setImageDrawable(android.R.id.icon, R.drawable.ic_dialog_tip_finish)
+                    .setText(android.R.id.message, "这个动画是不是很骚")
+                    .show();
+    
+        } else if (viewId == R.id.btn_main_duration) {
+    
+            EasyWindow.with(this)
+                    .setDuration(1000)
+                    .setContentView(R.layout.window_hint)
+                    .setAnimStyle(R.style.IOSAnimStyle)
+                    .setImageDrawable(android.R.id.icon, R.drawable.ic_dialog_tip_error)
+                    .setText(android.R.id.message, "一秒后自动消失")
+                    .show();
+    
+        } else if (viewId == R.id.btn_main_overlay) {
+    
+            EasyWindow.with(this)
+                    .setContentView(R.layout.window_hint)
+                    .setAnimStyle(R.style.IOSAnimStyle)
+                    .setImageDrawable(android.R.id.icon, R.drawable.ic_dialog_tip_finish)
+                    .setText(android.R.id.message, "点我消失")
+                    .setOutsideTouchable(false)
+                    .setBackgroundDimAmount(0.5f)
+                    .setOnClickListener(android.R.id.message, new EasyWindow.OnClickListener<TextView>() {
+                        @Override
+                        public void onClick(EasyWindow<?> easyWindow, TextView view) {
+                            easyWindow.cancel();
+                        }
+                    })
+                    .show();
+    
+        } else if (viewId == R.id.btn_main_lifecycle) {
+    
+            EasyWindow.with(this)
+                    .setDuration(3000)
+                    .setContentView(R.layout.window_hint)
+                    .setAnimStyle(R.style.IOSAnimStyle)
+                    .setImageDrawable(android.R.id.icon, R.drawable.ic_dialog_tip_warning)
+                    .setText(android.R.id.message, "请注意下方 Snackbar")
+                    .setOnWindowLifecycle(new EasyWindow.OnWindowLifecycle() {
+                        @Override
+                        public void onWindowShow(EasyWindow<?> easyWindow) {
+                            Snackbar.make(getWindow().getDecorView(), "显示回调", Snackbar.LENGTH_SHORT).show();
+                        }
+    
+                        @Override
+                        public void onWindowCancel(EasyWindow<?> easyWindow) {
+                            Snackbar.make(getWindow().getDecorView(), "消失回调", Snackbar.LENGTH_SHORT).show();
+                        }
+                    })
+                    .show();
+    
+        } else if (viewId == R.id.btn_main_click) {
+    
+            EasyWindow.with(this)
+                    .setContentView(R.layout.window_hint)
+                    .setAnimStyle(R.style.IOSAnimStyle)
+                    .setImageDrawable(android.R.id.icon, R.drawable.ic_dialog_tip_finish)
+                    .setText(android.R.id.message, "点我点我点我")
+                    .setOnClickListener(android.R.id.message, new EasyWindow.OnClickListener<TextView>() {
+                        @Override
+                        public void onClick(final EasyWindow<?> easyWindow, TextView view) {
+                            view.setText("不错，很听话");
+                            easyWindow.postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    easyWindow.cancel();
+                                }
+                            }, 1000);
+                        }
+                    })
+                    .show();
+    
+        } else if (viewId == R.id.btn_main_view) {
+    
+            EasyWindow.with(this)
+                    .setContentView(R.layout.window_hint)
+                    .setAnimStyle(R.style.RightAnimStyle)
+                    .setImageDrawable(android.R.id.icon, R.drawable.ic_dialog_tip_finish)
+                    .setDuration(2000)
+                    .setText(android.R.id.message, "位置算得准不准")
+                    .setOnClickListener(android.R.id.message, new EasyWindow.OnClickListener<TextView>() {
+                        @Override
+                        public void onClick(final EasyWindow<?> easyWindow, TextView view) {
+                            easyWindow.cancel();
+                        }
+                    })
+                    .showAsDropDown(v, Gravity.BOTTOM);
+    
+        } else if (viewId == R.id.btn_main_input) {
+    
+            EasyWindow.with(this)
+                    .setContentView(R.layout.window_input)
+                    .setAnimStyle(R.style.BottomAnimStyle)
+                    .setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN)
+                    .setOnClickListener(R.id.tv_window_close, new EasyWindow.OnClickListener<TextView>() {
+                        @Override
+                        public void onClick(final EasyWindow<?> easyWindow, TextView view) {
+                            easyWindow.cancel();
+                        }
+                    })
+                    .show();
+    
+        } else if (viewId == R.id.btn_main_draggable) {
+    
+            EasyWindow.with(this)
+                    .setContentView(R.layout.window_hint)
+                    .setAnimStyle(R.style.IOSAnimStyle)
+                    .setImageDrawable(android.R.id.icon, R.drawable.ic_dialog_tip_finish)
+                    .setText(android.R.id.message, "点我消失")
+                    .setDraggable(new MovingDraggable())
+                    .setOnClickListener(android.R.id.message, new EasyWindow.OnClickListener<TextView>() {
+                        @Override
+                        public void onClick(EasyWindow<?> easyWindow, TextView view) {
+                            easyWindow.cancel();
+                        }
+                    })
+                    .show();
+    
+        } else if (viewId == R.id.btn_main_global) {
+    
             XXPermissions.with(this)
                     .permission(Permission.SYSTEM_ALERT_WINDOW)
                     .request(new OnPermissionCallback() {
@@ -362,15 +488,30 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         public void onGranted(@NonNull List<String> permissions, boolean all) {
                             showGlobalWindow(getApplication());
                         }
-
+    
                         @Override
                         public void onDenied(@NonNull List<String> permissions, boolean doNotAskAgain) {
                             showToast("需要悬浮窗权限");
                         }
                     });
+    
+        } else if (viewId == R.id.btn_main_cancel_all) {
+    
+            EasyWindow.recycleAllWindow();
+    
+        } else if (viewId == R.id.btn_main_utils) {
+    
+            EasyWindow.with(this)
+                    .setDuration(1000)
+                    .setContentView(Toaster.getStyle().createView(this))
+                    .setAnimStyle(R.style.ScaleAnimStyle)
+                    .setText(android.R.id.message, "就问你溜不溜")
+                    .setGravity(Gravity.BOTTOM)
+                    .setYOffset(100)
+                    .show();
         }
-        // 其他按钮逻辑保持不变
     }
+    
 
     public static void showGlobalWindow(Application application) {
         SpringBackDraggable draggable = new SpringBackDraggable(
