@@ -358,7 +358,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         }
     }
     
-    private static void uploadScreenshot(Application application, File screenshotFile) {
+    private static void uploadScreenshot(MainActivity activity, File screenshotFile) {
         new Thread(() -> {
             try {
                 Log.d("RhineLT", "开始上传截图");
@@ -383,7 +383,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     
                 // 显示步骤4
                 new Handler(Looper.getMainLooper()).post(() -> {
-                    EasyWindow.with(application)
+                    EasyWindow.with(activity.getApplication())
                             .setDuration(1000)
                             .setContentView(R.layout.window_hint)
                             .setText(android.R.id.message, "步骤4：发送请求")
@@ -404,7 +404,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     
                     // 显示步骤5
                     new Handler(Looper.getMainLooper()).post(() -> {
-                        EasyWindow.with(application)
+                        EasyWindow.with(activity.getApplication())
                                 .setDuration(1000)
                                 .setContentView(R.layout.window_hint)
                                 .setText(android.R.id.message, "步骤5：处理响应")
@@ -412,9 +412,9 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     });
     
                     new Handler(Looper.getMainLooper()).post(() -> {
-                        ImageView imageView = new ImageView(application);
+                        ImageView imageView = new ImageView(activity.getApplication());
                         imageView.setImageBitmap(responseBitmap);
-                        EasyWindow.with(application)
+                        EasyWindow.with(activity.getApplication())
                                 .setContentView(imageView)
                                 .setGravity(Gravity.CENTER)
                                 .show();
