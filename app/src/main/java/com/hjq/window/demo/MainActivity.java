@@ -347,12 +347,12 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                 });
     
                                 // 记录请求信息
-                                Log.d("MainActivity", "发送请求: " + request.toString());
+                                Log.d("RhineLT", "发送请求: " + request.toString());
     
                                 Response response = client.newCall(request).execute();
                                 if (response.isSuccessful()) {
                                     String responseString = response.body().string();
-                                    Log.d("MainActivity", "响应成功: " + responseString);
+                                    Log.d("RhineLT", "响应成功: " + responseString);
     
                                     String base64Data = responseString.substring(responseString.indexOf("base64,") + 7);
                                     byte[] decodedBytes = Base64.decode(base64Data, Base64.DEFAULT);
@@ -376,7 +376,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                                                 .show();
                                     });
                                 } else {
-                                    Log.d("MainActivity", "响应失败: " + response.toString());
+                                    Log.d("RhineLT", "响应失败: " + response.toString());
                                 }
                             } catch (IOException e) {
                                 e.printStackTrace();
