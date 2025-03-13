@@ -173,7 +173,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                             File file = saveBitmapToFile(bitmap);
                             if (file != null) {
                                 Log.d("RhineLT", "Screenshot saved successfully, path:" + file.getAbsolutePath());
-                                uploadImageWithRetry(file, 3);
+                                uploadImageWithRetry(file, 1);
                             }
                         } catch (Exception e) {
                             Log.e("RhineLT", "Processing failed: " + e.getMessage(), e);
@@ -418,6 +418,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     MainActivity activity = currentInstance.get();
                     if (activity != null && !activity.isFinishing()) {
                         activity.safeCaptureFrame();
+                        Toaster.show("正在翻译...");
                     } else {
                         Toaster.show("当前无法截图");
                     }
