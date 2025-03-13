@@ -20,6 +20,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.WindowManager;
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 import com.hjq.toast.Toaster;
@@ -69,7 +70,36 @@ public class ScreenCaptureService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        int resultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED);
+        Intent data = intent.getParcelableExtra("data");
+        if (resultCode == Activity.RESULT_OK && data != null) {
+            mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
+            setupVirtualDisplay();
+        }
         return START_STICKY;
+    }
+
+    private void setupVirtualDisplay() {
+        try {
+            DisplayMetrics metrics = new DisplayMetrics();
+            WindowManager windowManager = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+            windowManager.getDefaultDisplay().getMetrics(metrics);
+            int screenDensity = metrics.densityDpi;
+            int screenWidth = metrics.widthPixels;
+            int screenHeight = metrics.heightPixels;
+            imageReader = ImageReader.newInstance(
+                    screenWidth, screenHeight,
+                    PixelFormat.RGBA_8888, 2);
+            virtualDisplay = mediaProjection.createVirtualDisplay(
+                    "ScreenCapture",
+                    screenWidth, screenHeight, screenDensity,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader.getSurface(), null, null);
+            Log.d("RhineLT", "VirtualDisplay creation successful");
+        } catch (Exception e) {
+            Log.e("RhineLT", "Failed to create VirtualDisplay: " + e.getMessage(), e);
+            showToast("Unable to create virtual display");
+        }
     }
 
     public void safeCaptureFrame() {

@@ -157,6 +157,11 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 try {
                     mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
                     setupVirtualDisplay();
+                    // 将数据传递给服务
+                    Intent serviceIntent = new Intent(this, ScreenCaptureService.class);
+                    serviceIntent.putExtra("resultCode", resultCode);
+                    serviceIntent.putExtra("data", data);
+                    startService(serviceIntent);
                 } catch (Exception e) {
                     Log.e("RhineLT", "Initialization failed: " + e.getMessage(), e);
                     showToast("Screen capture initialization failed");
