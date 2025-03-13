@@ -68,6 +68,10 @@ import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
 import java.util.zip.GZIPInputStream;
 import androidx.core.content.FileProvider;
+import android.app.Service;
+import android.content.ComponentName;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 
 
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -78,6 +82,20 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private VirtualDisplay virtualDisplay;
     private ImageReader imageReader;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private ScreenCaptureService screenCaptureService;
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            ScreenCaptureService.LocalBinder binder = (ScreenCaptureService.LocalBinder) service;
+            screenCaptureService = binder.getService();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            screenCaptureService = null;
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -105,6 +123,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 startActivity(intent);
             }
         });
+        Intent serviceIntent = new Intent(this, ScreenCaptureService.class);
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
     private void checkPermissions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -365,6 +385,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        unbindService(serviceConnection);
         currentInstance.clear();
         releaseResources();
     }
@@ -570,8 +591,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .setDraggable(draggable)
                 .setOnClickListener(android.R.id.icon, (easyWindow, view) -> {
                     MainActivity activity = currentInstance.get();
-                    if (activity != null && !activity.isFinishing()) {
-                        activity.safeCaptureFrame();
+                    if (activity != null && !activity.isFinishing() && activity.screenCaptureService != null) {
+                        activity.screenCaptureService.safeCaptureFrame();
                     } else {
                         Toaster.show("当前无法截图");
                     }
