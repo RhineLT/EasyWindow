@@ -69,6 +69,8 @@ import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
 import java.util.zip.GZIPInputStream;
 import androidx.core.content.FileProvider;
+import java.nio.file.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -83,6 +85,11 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private EditText detectorEditText;
     private EditText detectionSizeEditText;
     private EditText translatorEditText;
+    private EditText folderPathEditText;
+    private TextView detectedImagesTextView;
+    private TextView translatedImagesTextView;
+    private AtomicInteger detectedImagesCount = new AtomicInteger(0);
+    private AtomicInteger translatedImagesCount = new AtomicInteger(0);
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -104,6 +111,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         detectorEditText = findViewById(R.id.et_detector);
         detectionSizeEditText = findViewById(R.id.et_detection_size);
         translatorEditText = findViewById(R.id.et_translator);
+        folderPathEditText = findViewById(R.id.et_folder_path);
+        detectedImagesTextView = findViewById(R.id.tv_detected_images);
+        translatedImagesTextView = findViewById(R.id.tv_translated_images);
+        findViewById(R.id.btn_local_translate).setOnClickListener(this);
     }
     private void checkPermissions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -421,6 +432,45 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                         }
                     });
         }
+        if (viewId == R.id.btn_local_translate) {
+            String folderPath = folderPathEditText.getText().toString();
+            if (!folderPath.isEmpty()) {
+                monitorFolderForImages(folderPath);
+            } else {
+                showToast("请指定文件夹路径");
+            }
+        }
+    }
+
+    private void monitorFolderForImages(String folderPath) {
+        new Thread(() -> {
+            try {
+                Path path = Paths.get(folderPath);
+                WatchService watchService = FileSystems.getDefault().newWatchService();
+                path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
+
+                while (true) {
+                    WatchKey key = watchService.take();
+                    for (WatchEvent<?> event : key.pollEvents()) {
+                        if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
+                            Path newPath = path.resolve((Path) event.context());
+                            File newFile = newPath.toFile();
+                            if (newFile.isFile() && newFile.getName().endsWith(".png")) {
+                                detectedImagesCount.incrementAndGet();
+                                mainHandler.post(() -> detectedImagesTextView.setText("已检测到 " + detectedImagesCount.get() + " 个图像"));
+                                uploadImageWithRetry(newFile, 3);
+                                translatedImagesCount.incrementAndGet();
+                                mainHandler.post(() -> translatedImagesTextView.setText("已翻译完成 " + translatedImagesCount.get() + " 个图像"));
+                            }
+                        }
+                    }
+                    key.reset();
+                }
+            } catch (Exception e) {
+                Log.e("RhineLT", "监控文件夹失败: " + e.getMessage(), e);
+                showToast("监控文件夹失败");
+            }
+        }).start();
     }
 
     public static void showGlobalWindow(Application application) {

@@ -68,6 +68,32 @@
                         android:layout_height="wrap_content"
                         android:hint="translator (默认: gpt3.5)" />
 
+                    <EditText
+                        android:id="@+id/et_folder_path"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="监控文件夹路径" />
+
+                    <Button
+                        android:id="@+id/btn_local_translate"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="15dp"
+                        android:text="启动本地翻译" />
+
+                    <TextView
+                        android:id="@+id/tv_detected_images"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="已检测到 0 个图像" />
+
+                    <TextView
+                        android:id="@+id/tv_translated_images"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="已翻译完成 0 个图像" />
+
                 </LinearLayout>
 
             </LinearLayout>
