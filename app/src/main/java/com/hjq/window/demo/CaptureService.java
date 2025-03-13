@@ -21,6 +21,24 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import java.io.File;
 import java.io.IOException;
+import android.app.Service;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.os.Environment;
+import android.os.IBinder;
+import android.widget.Toast;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import okhttp3.*;
+import okhttp3.logging.HttpLoggingInterceptor;
+import java.util.zip.GZIPInputStream;
+import java.nio.charset.StandardCharsets;
+
+
+
 
 public class CaptureService extends Service {
     private static final String CHANNEL_ID = "capture_channel";
@@ -58,6 +76,10 @@ public class CaptureService extends Service {
     public void setupMediaProjection(MediaProjection projection) {
         this.mediaProjection = projection;
         setupVirtualDisplay();
+    }
+    
+    private void showToast(String message) {
+        mainHandler.post(() -> Toaster.show(message));
     }
 
     private void setupVirtualDisplay() {

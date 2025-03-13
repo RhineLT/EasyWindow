@@ -68,6 +68,8 @@ import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
 import java.util.zip.GZIPInputStream;
 import androidx.core.content.FileProvider;
+import com.hjq.window.demo.CaptureService;
+import android.content.ServiceConnection;
 
 
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -192,6 +194,109 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             showToast("Unable to create virtual display");
         }
     }
+
+    private File saveBitmapToFile(Bitmap bitmap) throws IOException {
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        File directory = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw new IOException("Unable to create directory: " + directory.getAbsolutePath());
+        }
+        File file = new File(directory, "SCREENSHOT_" + timeStamp + ".png");
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            out.flush();
+            Log.d("RhineLT", "File saved successfully: " + file.length() + " bytes");
+            return file;
+        }
+    }
+
+
+    private void uploadImageWithRetry(File file, int maxRetries) {
+        new Thread(() -> {
+            int retryCount = 0;
+            boolean success = false;
+            
+            while (retryCount < maxRetries && !success) {
+                try {
+                    Log.d("RhineLT", "Upload attempt (" + (retryCount+1) + ") time)");
+                    success = uploadImage(file);
+                    if (!success) {
+                        Log.w("RhineLT", "Attempted "+(retryCount+1)+" failures");
+                        retryCount++;
+                        Thread.sleep(2000);
+                    }
+                } catch (Exception e) {
+                    Log.e("RhineLT", "Upload error: " + 
+                        e.getClass().getSimpleName() + " - " + e.getMessage());
+                    retryCount++;
+                }
+            }
+            if (!success) {
+                showToast("上传失败，请检查网络后重试");
+                Log.e("RhineLT", "The upload failed due to reaching the maximum number of retries.");
+            }
+        }).start();
+    }
+
+    private boolean uploadImage(File file) throws IOException {
+        Log.d("RhineLT", "Ready to upload file: " + file.getAbsolutePath() + 
+            ", size: " + file.length() + " bytes");
+        OkHttpClient client = new OkHttpClient.Builder()
+            .addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build();
+
+        String configJson = "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }";
+        
+        RequestBody body = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("config", configJson)
+                .addFormDataPart("image", file.getName(), 
+                    RequestBody.create(MediaType.parse("image/png"), file))
+                .build();
+        Log.d("RhineLT", "Build Multipart request body, number of fields:" + body.contentLength() + " bytes");
+        Request request = new Request.Builder()
+                .url("https://47.94.2.169:4680/translate/with-form/image")
+                .post(body)
+                .addHeader("Accept", "*/*")
+                .addHeader("Accept-Encoding", "gzip, deflate, br")
+                .addHeader("User-Agent", "PostmanRuntime-ApipostRuntime/1.1.0")
+                .addHeader("Connection", "keep-alive")
+                .addHeader("content-type", "multipart/form-data;")
+                .build();
+
+        Log.d("RhineLT", "Initiate request => URL: " + request.url());
+        Log.d("RhineLT", "Headers: " + request.headers());
+        try (Response response = client.newCall(request).execute()) {
+            Log.d("RhineLT", "Response Code: " + response.code());
+            Log.d("RhineLT", "Response header: " + response.headers());
+            
+            if (response.body() != null) {
+                byte[] bytes;
+                try (GZIPInputStream gzipInputStream = new GZIPInputStream(response.body().byteStream())) {
+                    bytes = gzipInputStream.readAllBytes();
+                }
+                Log.d("RhineLT", "Received response data length:" + bytes.length + " bytes");
+                
+                if (bytes.length < 100) {
+                    String bodyStr = new String(bytes, StandardCharsets.UTF_8);
+                    Log.e("RhineLT", "Invalid response content:" + bodyStr);
+                    return false;
+                }
+                
+                saveTranslatedImage(bytes, file.getName());
+                return true;
+            }
+            return false;
+        } catch (IOException e) {
+            Log.e("RhineLT", "Network request error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            throw e;
+        }
+    }
+
+
+
     private void safeCaptureFrame() {
         new Thread(() -> {
             try {
