@@ -620,10 +620,16 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .setDraggable(draggable)
                 .setOnClickListener(android.R.id.icon, (easyWindow, view) -> {
                     MainActivity activity = currentInstance.get();
-                    if (activity != null && activity.isBound) {
-                        activity.captureService.captureAndProcess();
-                    } else {
-                        Toaster.show("后台服务已启动");
+                    if (activity != null) {
+                        if (activity.isBound) {
+                            activity.captureService.captureAndProcess();
+                        } else {
+                            // 尝试绑定服务
+                            Intent serviceIntent = new Intent(application, CaptureService.class);
+                            ContextCompat.startForegroundService(application, serviceIntent);
+                            application.bindService(serviceIntent, activity.serviceConnection, Context.BIND_AUTO_CREATE);
+                            Toaster.show("正在启动后台服务，请稍后再试");
+                        }
                     }
                 })
                 .show();
