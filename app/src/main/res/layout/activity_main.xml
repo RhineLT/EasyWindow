@@ -48,7 +48,7 @@
                         android:id="@+id/et_url"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="URL 前缀 (默认: https://47.94.2.169:4680)" />
+                        android:hint="URL 前缀 (默认: http://10.243.3.100:7500)" />
 
                     <EditText
                         android:id="@+id/et_detector"

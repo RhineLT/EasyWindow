@@ -266,7 +266,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             .readTimeout(60, TimeUnit.SECONDS)
             .build();
     
-        String urlPrefix = urlEditText.getText().toString().isEmpty() ? "https://47.94.2.169:4680" : urlEditText.getText().toString();
+        String urlPrefix = urlEditText.getText().toString().isEmpty() ? "http://10.243.3.100:7500" : urlEditText.getText().toString();
         String url = urlPrefix + "/translate/with-form/image";
         String detector = detectorEditText.getText().toString().isEmpty() ? "default" : detectorEditText.getText().toString();
         String detectionSize = detectionSizeEditText.getText().toString().isEmpty() ? "1536" : detectionSizeEditText.getText().toString();
