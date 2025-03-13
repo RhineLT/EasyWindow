@@ -343,7 +343,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     out.write(imageBytes);
                     out.flush();
                     Log.d("RhineLT", "Translation saved successfully: " + file.getAbsolutePath());
-                    showToast("保存成功: " + file.getName());
                     
                     // 使用 FileProvider 生成 content URI
                     Uri uri = FileProvider.getUriForFile(this, "com.hjq.window.demo.fileprovider", file);
