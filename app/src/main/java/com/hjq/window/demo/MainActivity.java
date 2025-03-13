@@ -265,13 +265,13 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .build();
-
+    
         String urlPrefix = urlEditText.getText().toString().isEmpty() ? "https://47.94.2.169:4680" : urlEditText.getText().toString();
         String url = urlPrefix + "/translate/with-form/image";
         String detector = detectorEditText.getText().toString().isEmpty() ? "default" : detectorEditText.getText().toString();
         String detectionSize = detectionSizeEditText.getText().toString().isEmpty() ? "1536" : detectionSizeEditText.getText().toString();
         String translator = translatorEditText.getText().toString().isEmpty() ? "gpt3.5" : translatorEditText.getText().toString();
-
+    
         String configJson = "{ \"detector\": { \"detector\": \"" + detector + "\", \"detection_size\": " + detectionSize + " }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"" + translator + "\", \"target_lang\": \"CHS\" } }";
         
         RequestBody body = new MultipartBody.Builder()
@@ -290,7 +290,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .addHeader("Connection", "keep-alive")
                 .addHeader("content-type", "multipart/form-data;")
                 .build();
-
+    
         Log.d("RhineLT", "Initiate request => URL: " + request.url());
         Log.d("RhineLT", "Headers: " + request.headers());
         try (Response response = client.newCall(request).execute()) {
@@ -299,8 +299,12 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             
             if (response.body() != null) {
                 byte[] bytes;
-                try (GZIPInputStream gzipInputStream = new GZIPInputStream(response.body().byteStream())) {
-                    bytes = gzipInputStream.readAllBytes();
+                if ("gzip".equalsIgnoreCase(response.header("Content-Encoding"))) {
+                    try (GZIPInputStream gzipInputStream = new GZIPInputStream(response.body().byteStream())) {
+                        bytes = gzipInputStream.readAllBytes();
+                    }
+                } else {
+                    bytes = response.body().bytes();
                 }
                 Log.d("RhineLT", "Received response data length:" + bytes.length + " bytes");
                 
