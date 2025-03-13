@@ -1,3 +1,4 @@
+package com.hjq.window.demo; // 确保包名与MainActivity一致
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
