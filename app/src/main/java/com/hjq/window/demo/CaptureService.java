@@ -12,33 +12,28 @@ import android.hardware.display.VirtualDisplay;
 import android.media.Image;
 import android.media.ImageReader;
 import android.media.projection.MediaProjection;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
-import java.io.File;
-import java.io.IOException;
-import android.app.Service;
-import android.content.Intent;
-import android.graphics.Bitmap;
-import android.os.Environment;
-import android.os.IBinder;
-import android.widget.Toast;
+import androidx.core.content.FileProvider;
+import com.hjq.toast.Toaster;
+import com.hjq.window.demo.MainActivity;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPInputStream;
 import okhttp3.*;
 import okhttp3.logging.HttpLoggingInterceptor;
-import java.util.zip.GZIPInputStream;
-import java.nio.charset.StandardCharsets;
-
-
-
 
 public class CaptureService extends Service {
     private static final String CHANNEL_ID = "capture_channel";
@@ -47,6 +42,7 @@ public class CaptureService extends Service {
     private VirtualDisplay virtualDisplay;
     private ImageReader imageReader;
     private File lastProcessedFile;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     public void onCreate() {
@@ -237,6 +233,10 @@ public class CaptureService extends Service {
             Log.e("RhineLT", "Network request error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             throw e;
         }
+    }
+
+    private void saveTranslatedImage(byte[] imageBytes, String originalName) {
+        // ...existing code...
     }
 
     void sendResultNotification(File imageFile) {

@@ -70,6 +70,8 @@ import java.util.zip.GZIPInputStream;
 import androidx.core.content.FileProvider;
 import com.hjq.window.demo.CaptureService;
 import android.content.ServiceConnection;
+import android.content.ComponentName;
+import android.os.IBinder;
 
 
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -80,6 +82,21 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private VirtualDisplay virtualDisplay;
     private ImageReader imageReader;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private CaptureService captureService;
+    private boolean isBound = false;
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            isBound = true;
+            Log.d("RhineLT", "Service connected");
+        }
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            isBound = false;
+            Log.d("RhineLT", "Service disconnected");
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -107,21 +124,9 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 startActivity(intent);
             }
         });
+        // 处理通知点击
+        handleNotificationIntent(getIntent());
     }
-    private CaptureService captureService;
-    private boolean isBound = false;
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName className, IBinder service) {
-            isBound = true;
-            Log.d("RhineLT", "Service connected");
-        }
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
-            isBound = false;
-            Log.d("RhineLT", "Service disconnected");
-        }
-    };
 
     private void checkPermissions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -624,15 +629,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .show();
     }
     // 新增通知处理逻辑
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        currentInstance = new WeakReference<>(this);
-        
-        // 处理通知点击
-        handleNotificationIntent(getIntent());
-    }
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
