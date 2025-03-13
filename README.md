@@ -8,6 +8,7 @@
 
 ![](picture/demo_code.png)
 
+
 ![](picture/dynamic_figure.gif)
 
 #### 本框架意在解决一些悬浮窗的需求，如果是普通的 Toast 封装推荐使用 [Toaster](https://github.com/getActivity/Toaster)
