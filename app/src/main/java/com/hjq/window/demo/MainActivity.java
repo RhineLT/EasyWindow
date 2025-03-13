@@ -106,6 +106,21 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             }
         });
     }
+    private CaptureService captureService;
+    private boolean isBound = false;
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            isBound = true;
+            Log.d("RhineLT", "Service connected");
+        }
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            isBound = false;
+            Log.d("RhineLT", "Service disconnected");
+        }
+    };
+
     private void checkPermissions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, 
@@ -130,21 +145,32 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
         startActivityForResult(captureIntent, REQUEST_CODE_SCREEN_CAPTURE);
     }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
             if (resultCode == RESULT_OK && data != null) {
                 try {
                     mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
-                    setupVirtualDisplay();
+                    
+                    // 启动并绑定服务
+                    Intent serviceIntent = new Intent(this, CaptureService.class);
+                    ContextCompat.startForegroundService(this, serviceIntent);
+                    bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+                    
+                    // 传递 MediaProjection 到服务
+                    if (captureService != null) {
+                        captureService.setupMediaProjection(mediaProjection);
+                    }
                 } catch (Exception e) {
-                    Log.e("RhineLT", "Initialization failed: " + e.getMessage(), e);
-                    showToast("Screen capture initialization failed");
+                    Log.e("RhineLT", "Init failed: " + e.getMessage());
                 }
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
+
+
     private void setupVirtualDisplay() {
         try {
             DisplayMetrics metrics = new DisplayMetrics();
@@ -218,102 +244,9 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             return null;
         }
     }
-    private File saveBitmapToFile(Bitmap bitmap) throws IOException {
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        File directory = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        if (!directory.exists() && !directory.mkdirs()) {
-            throw new IOException("Unable to create directory: " + directory.getAbsolutePath());
-        }
-        File file = new File(directory, "SCREENSHOT_" + timeStamp + ".png");
-        try (FileOutputStream out = new FileOutputStream(file)) {
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-            out.flush();
-            Log.d("RhineLT", "File saved successfully: " + file.length() + " bytes");
-            return file;
-        }
-    }
-    private void uploadImageWithRetry(File file, int maxRetries) {
-        new Thread(() -> {
-            int retryCount = 0;
-            boolean success = false;
-            
-            while (retryCount < maxRetries && !success) {
-                try {
-                    Log.d("RhineLT", "Upload attempt (" + (retryCount+1) + ") time)");
-                    success = uploadImage(file);
-                    if (!success) {
-                        Log.w("RhineLT", "Attempted "+(retryCount+1)+" failures");
-                        retryCount++;
-                        Thread.sleep(2000);
-                    }
-                } catch (Exception e) {
-                    Log.e("RhineLT", "Upload error: " + 
-                        e.getClass().getSimpleName() + " - " + e.getMessage());
-                    retryCount++;
-                }
-            }
-            if (!success) {
-                showToast("上传失败，请检查网络后重试");
-                Log.e("RhineLT", "The upload failed due to reaching the maximum number of retries.");
-            }
-        }).start();
-    }
-    private boolean uploadImage(File file) throws IOException {
-        Log.d("RhineLT", "Ready to upload file: " + file.getAbsolutePath() + 
-            ", size: " + file.length() + " bytes");
-        OkHttpClient client = new OkHttpClient.Builder()
-            .addInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .build();
 
-        String configJson = "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }";
-        
-        RequestBody body = new MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("config", configJson)
-                .addFormDataPart("image", file.getName(), 
-                    RequestBody.create(MediaType.parse("image/png"), file))
-                .build();
-        Log.d("RhineLT", "Build Multipart request body, number of fields:" + body.contentLength() + " bytes");
-        Request request = new Request.Builder()
-                .url("https://47.94.2.169:4680/translate/with-form/image")
-                .post(body)
-                .addHeader("Accept", "*/*")
-                .addHeader("Accept-Encoding", "gzip, deflate, br")
-                .addHeader("User-Agent", "PostmanRuntime-ApipostRuntime/1.1.0")
-                .addHeader("Connection", "keep-alive")
-                .addHeader("content-type", "multipart/form-data;")
-                .build();
 
-        Log.d("RhineLT", "Initiate request => URL: " + request.url());
-        Log.d("RhineLT", "Headers: " + request.headers());
-        try (Response response = client.newCall(request).execute()) {
-            Log.d("RhineLT", "Response Code: " + response.code());
-            Log.d("RhineLT", "Response header: " + response.headers());
-            
-            if (response.body() != null) {
-                byte[] bytes;
-                try (GZIPInputStream gzipInputStream = new GZIPInputStream(response.body().byteStream())) {
-                    bytes = gzipInputStream.readAllBytes();
-                }
-                Log.d("RhineLT", "Received response data length:" + bytes.length + " bytes");
-                
-                if (bytes.length < 100) {
-                    String bodyStr = new String(bytes, StandardCharsets.UTF_8);
-                    Log.e("RhineLT", "Invalid response content:" + bodyStr);
-                    return false;
-                }
-                
-                saveTranslatedImage(bytes, file.getName());
-                return true;
-            }
-            return false;
-        } catch (IOException e) {
-            Log.e("RhineLT", "Network request error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-            throw e;
-        }
-    }
+
 
     private void saveTranslatedImage(byte[] imageBytes, String originalName) {
         Log.d("RhineLT", "Start saving translated image, original file name:" + originalName + 
@@ -362,12 +295,19 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             return false;
         }
     }
+
+    // 修改资源释放
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (isBound) {
+            unbindService(serviceConnection);
+            isBound = false;
+        }
         currentInstance.clear();
-        releaseResources();
+        releaseLocalResources();
     }
+
     private void releaseResources() {
         try {
             if (imageReader != null) {
@@ -570,18 +510,69 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .setDraggable(draggable)
                 .setOnClickListener(android.R.id.icon, (easyWindow, view) -> {
                     MainActivity activity = currentInstance.get();
-                    if (activity != null && !activity.isFinishing()) {
-                        activity.safeCaptureFrame();
+                    if (activity != null && activity.isBound) {
+                        activity.captureService.captureAndProcess();
                     } else {
-                        Toaster.show("当前无法截图");
+                        Toaster.show("后台服务已启动");
                     }
                 })
                 .show();
     }
+    // 新增通知处理逻辑
     @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        finish();
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        currentInstance = new WeakReference<>(this);
+        
+        // 处理通知点击
+        handleNotificationIntent(getIntent());
     }
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleNotificationIntent(intent);
+    }
+    private void handleNotificationIntent(Intent intent) {
+        if (intent != null && intent.hasExtra("image_path")) {
+            String path = intent.getStringExtra("image_path");
+            if (path != null) {
+                showTranslatedImage(new File(path));
+            }
+        }
+    }
+    private void showTranslatedImage(File file) {
+        if (!file.exists()) {
+            showToast("文件不存在");
+            return;
+        }
+        runOnUiThread(() -> {
+            try {
+                Uri uri = FileProvider.getUriForFile(
+                        this,
+                        "com.hjq.window.demo.fileprovider",
+                        file
+                );
+                
+                Intent intent = new Intent(Intent.ACTION_VIEW)
+                        .setDataAndType(uri, "image/png")
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                
+                startActivity(Intent.createChooser(intent, "选择查看方式"));
+            } catch (Exception e) {
+                Log.e("RhineLT", "Open failed: " + e.getMessage());
+                showToast("打开文件失败");
+            }
+        });
+    }
+
+    private void releaseLocalResources() {
+        // 仅释放 Activity 相关资源
+        if (mediaProjection != null) {
+            mediaProjection.stop();
+            mediaProjection = null;
+        }
+    }
+
 
 }
