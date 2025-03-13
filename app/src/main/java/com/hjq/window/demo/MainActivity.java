@@ -155,6 +155,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
             if (resultCode == RESULT_OK && data != null) {
                 try {
+                    Log.d("RhineLT", "Screen capture permission granted");
                     mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
                     setupVirtualDisplay();
                     // 将数据传递给服务
@@ -166,6 +167,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     Log.e("RhineLT", "Initialization failed: " + e.getMessage(), e);
                     showToast("Screen capture initialization failed");
                 }
+            } else {
+                Log.w("RhineLT", "Screen capture permission denied or data is null");
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
@@ -192,69 +195,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         }
     }
     private void safeCaptureFrame() {
-        new Thread(() -> {
-            try {
-                Image image = imageReader.acquireLatestImage();
-                if (image == null) {
-                    Log.w("RhineLT", "Failed to acquire image: imageReader returns null");
-                    showToast("Failed to acquire image");
-                    return;
-                }
-                final Bitmap bitmap = imageToBitmap(image);
-                image.close();
-                if (bitmap != null) {
-                    mainHandler.post(() -> {
-                        try {
-                            File file = saveBitmapToFile(bitmap);
-                            if (file != null) {
-                                Log.d("RhineLT", "Screenshot saved successfully, path:" + file.getAbsolutePath());
-                                uploadImageWithRetry(file, 3);
-                            }
-                        } catch (Exception e) {
-                            Log.e("RhineLT", "Processing failed: " + e.getMessage(), e);
-                            showToast("Failed to save or upload");
-                        }
-                    });
-                }
-            } catch (Exception e) {
-                Log.e("RhineLT", "Capture failed: " + e.getMessage(), e);
-                showToast("Screenshot failed");
-            }
-        }).start();
-    }
-    private Bitmap imageToBitmap(Image image) {
-        try {
-            Image.Plane[] planes = image.getPlanes();
-            ByteBuffer buffer = planes[0].getBuffer();
-            int width = image.getWidth();
-            int height = image.getHeight();
-            int pixelStride = planes[0].getPixelStride();
-            int rowStride = planes[0].getRowStride();
-            int rowPadding = rowStride - pixelStride * width;
-            Bitmap bitmap = Bitmap.createBitmap(
-                    width + rowPadding / pixelStride, 
-                    height, 
-                    Bitmap.Config.ARGB_8888);
-            bitmap.copyPixelsFromBuffer(buffer);
-            Log.d("RhineLT", "Image conversion successful, dimensions: " + bitmap.getWidth() + "x" + bitmap.getHeight());
-            return bitmap;
-        } catch (Exception e) {
-            Log.e("RhineLT", "Conversion failed: " + e.getMessage(), e);
-            return null;
-        }
-    }
-    private File saveBitmapToFile(Bitmap bitmap) throws IOException {
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        File directory = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        if (!directory.exists() && !directory.mkdirs()) {
-            throw new IOException("Unable to create directory: " + directory.getAbsolutePath());
-        }
-        File file = new File(directory, "SCREENSHOT_" + timeStamp + ".png");
-        try (FileOutputStream out = new FileOutputStream(file)) {
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-            out.flush();
-            Log.d("RhineLT", "File saved successfully: " + file.length() + " bytes");
-            return file;
+        if (screenCaptureService != null) {
+            screenCaptureService.safeCaptureFrame();
+        } else {
+            showToast("Screen capture service is not available");
         }
     }
     private void uploadImageWithRetry(File file, int maxRetries) {
@@ -597,8 +541,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .setOnClickListener(android.R.id.icon, (easyWindow, view) -> {
                     MainActivity activity = currentInstance.get();
                     if (activity != null && !activity.isFinishing() && activity.screenCaptureService != null) {
+                        Log.d("RhineLT", "Attempting to capture frame");
                         activity.screenCaptureService.safeCaptureFrame();
                     } else {
+                        Log.w("RhineLT", "Current activity is null or finishing, or screenCaptureService is null");
                         Toaster.show("当前无法截图");
                     }
                 })

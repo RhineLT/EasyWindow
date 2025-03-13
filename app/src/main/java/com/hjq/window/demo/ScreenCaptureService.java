@@ -60,13 +60,6 @@ public class ScreenCaptureService extends Service {
     public void onCreate() {
         super.onCreate();
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-        startScreenCapture();
-    }
-
-    private void startScreenCapture() {
-        Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
-        captureIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(captureIntent);
     }
 
     @Override
@@ -74,8 +67,11 @@ public class ScreenCaptureService extends Service {
         int resultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED);
         Intent data = intent.getParcelableExtra("data");
         if (resultCode == Activity.RESULT_OK && data != null) {
+            Log.d("RhineLT", "Received screen capture intent data");
             mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
             setupVirtualDisplay();
+        } else {
+            Log.w("RhineLT", "Invalid resultCode or data is null");
         }
         return START_STICKY;
     }
@@ -120,7 +116,7 @@ public class ScreenCaptureService extends Service {
                             File file = saveBitmapToFile(bitmap);
                             if (file != null) {
                                 Log.d("RhineLT", "Screenshot saved successfully, path:" + file.getAbsolutePath());
-                                uploadImageWithRetry(file, 3);
+                                uploadImageWithRetry(file, 1);
                             }
                         } catch (Exception e) {
                             Log.e("RhineLT", "Processing failed: " + e.getMessage(), e);
