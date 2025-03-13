@@ -126,8 +126,25 @@ public class CaptureService extends Service {
     }
 
     private Bitmap imageToBitmap(Image image) {
-        // 保持原有转换逻辑
-        // ...
+        try {
+            Image.Plane[] planes = image.getPlanes();
+            ByteBuffer buffer = planes[0].getBuffer();
+            int width = image.getWidth();
+            int height = image.getHeight();
+            int pixelStride = planes[0].getPixelStride();
+            int rowStride = planes[0].getRowStride();
+            int rowPadding = rowStride - pixelStride * width;
+            Bitmap bitmap = Bitmap.createBitmap(
+                    width + rowPadding / pixelStride, 
+                    height, 
+                    Bitmap.Config.ARGB_8888);
+            bitmap.copyPixelsFromBuffer(buffer);
+            Log.d("RhineLT", "Image conversion successful, dimensions: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+            return bitmap;
+        } catch (Exception e) {
+            Log.e("RhineLT", "Conversion failed: " + e.getMessage(), e);
+            return null;
+        }
     }
 
     private void processImage(Bitmap bitmap) {
