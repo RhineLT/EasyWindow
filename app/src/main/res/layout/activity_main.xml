@@ -36,7 +36,39 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_horizontal"
                     android:layout_marginTop="15dp"
-                    android:text="全局可拖拽的悬浮窗" />
+                    android:text="启动全局翻译" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <EditText
+                        android:id="@+id/et_url"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="URL 前缀 (默认: https://47.94.2.169:4680)" />
+
+                    <EditText
+                        android:id="@+id/et_detector"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="detector (默认: default)" />
+
+                    <EditText
+                        android:id="@+id/et_detection_size"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="detection_size (默认: 1536)" />
+
+                    <EditText
+                        android:id="@+id/et_translator"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="translator (默认: gpt3.5)" />
+
+                </LinearLayout>
 
             </LinearLayout>
 

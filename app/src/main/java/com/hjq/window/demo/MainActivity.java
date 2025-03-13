@@ -25,6 +25,7 @@ import android.view.Gravity;
 import android.view.Surface;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -78,6 +79,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private VirtualDisplay virtualDisplay;
     private ImageReader imageReader;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private EditText urlEditText;
+    private EditText detectorEditText;
+    private EditText detectionSizeEditText;
+    private EditText translatorEditText;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -95,6 +100,10 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 startActivity(intent);
             }
         });
+        urlEditText = findViewById(R.id.et_url);
+        detectorEditText = findViewById(R.id.et_detector);
+        detectionSizeEditText = findViewById(R.id.et_detection_size);
+        translatorEditText = findViewById(R.id.et_translator);
     }
     private void checkPermissions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -257,7 +266,13 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             .readTimeout(60, TimeUnit.SECONDS)
             .build();
 
-        String configJson = "{ \"detector\": { \"detector\": \"default\", \"detection_size\": 1536 }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"gpt3.5\", \"target_lang\": \"CHS\" } }";
+        String urlPrefix = urlEditText.getText().toString().isEmpty() ? "https://47.94.2.169:4680" : urlEditText.getText().toString();
+        String url = urlPrefix + "/translate/with-form/image";
+        String detector = detectorEditText.getText().toString().isEmpty() ? "default" : detectorEditText.getText().toString();
+        String detectionSize = detectionSizeEditText.getText().toString().isEmpty() ? "1536" : detectionSizeEditText.getText().toString();
+        String translator = translatorEditText.getText().toString().isEmpty() ? "gpt3.5" : translatorEditText.getText().toString();
+
+        String configJson = "{ \"detector\": { \"detector\": \"" + detector + "\", \"detection_size\": " + detectionSize + " }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"" + translator + "\", \"target_lang\": \"CHS\" } }";
         
         RequestBody body = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
@@ -267,7 +282,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .build();
         Log.d("RhineLT", "Build Multipart request body, number of fields:" + body.contentLength() + " bytes");
         Request request = new Request.Builder()
-                .url("https://47.94.2.169:4680/translate/with-form/image")
+                .url(url)
                 .post(body)
                 .addHeader("Accept", "*/*")
                 .addHeader("Accept-Encoding", "gzip, deflate, br")
