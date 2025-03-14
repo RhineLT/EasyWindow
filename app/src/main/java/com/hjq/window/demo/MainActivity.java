@@ -464,7 +464,15 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
         if (viewId == R.id.btn_local_translate) {
             String folderPath = folderPathEditText.getText().toString();
             if (!folderPath.isEmpty()) {
-                monitorFolderForImages(folderPath);
+                // 显示弹窗提示
+                new AlertDialog.Builder(this)
+                        .setTitle("提示")
+                        .setMessage("开始监控文件夹变化")
+                        .setPositiveButton("确定", (dialog, which) -> {
+                            monitorFolderForImages(folderPath);
+                        })
+                        .setNegativeButton("取消", null)
+                        .show();
             } else {
                 showToast("请指定文件夹路径");
             }
