@@ -71,6 +71,10 @@ import java.util.zip.GZIPInputStream;
 import androidx.core.content.FileProvider;
 import java.nio.file.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 
 
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -381,12 +385,17 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             return false;
         }
     }
+    
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        currentInstance.clear();
+        isMonitoring = false;
+        if (monitoringThread != null) {
+            monitoringThread.interrupt();
+        }
         releaseResources();
     }
+
     private void releaseResources() {
         try {
             if (imageReader != null) {
@@ -441,37 +450,100 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             }
         }
     }
+    private final Set<String> processedFiles = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private volatile boolean isMonitoring = false;
+    private Thread monitoringThread;
+
 
     private void monitorFolderForImages(String folderPath) {
-        new Thread(() -> {
+        isMonitoring = true;
+        monitoringThread = new Thread(() -> {
             try {
                 Path path = Paths.get(folderPath);
                 WatchService watchService = FileSystems.getDefault().newWatchService();
                 path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
 
-                while (true) {
-                    WatchKey key = watchService.take();
-                    for (WatchEvent<?> event : key.pollEvents()) {
-                        if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
-                            Path newPath = path.resolve((Path) event.context());
-                            File newFile = newPath.toFile();
-                            if (newFile.isFile() && newFile.getName().endsWith(".png")) {
-                                detectedImagesCount.incrementAndGet();
-                                mainHandler.post(() -> detectedImagesTextView.setText("已检测到 " + detectedImagesCount.get() + " 个图像"));
-                                uploadImageWithRetry(newFile, 3);
-                                translatedImagesCount.incrementAndGet();
-                                mainHandler.post(() -> translatedImagesTextView.setText("已翻译完成 " + translatedImagesCount.get() + " 个图像"));
-                            }
-                        }
+                Log.d("RhineLT", "开始监控文件夹: " + folderPath);
+                
+                while (isMonitoring) {
+                    WatchKey key;
+                    try {
+                        key = watchService.poll(500, TimeUnit.MILLISECONDS); // 添加超时避免阻塞
+                        if (key == null) continue;
+                    } catch (InterruptedException e) {
+                        Log.d("RhineLT", "监控线程被中断");
+                        break;
                     }
-                    key.reset();
+
+                    for (WatchEvent<?> event : key.pollEvents()) {
+                        handleFileEvent(event, path);
+                    }
+
+                    if (!key.reset()) {
+                        Log.e("RhineLT", "WatchKey 失效，重新注册监控");
+                        path.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
+                    }
                 }
             } catch (Exception e) {
-                Log.e("RhineLT", "监控文件夹失败: " + e.getMessage(), e);
-                showToast("监控文件夹失败");
+                Log.e("RhineLT", "文件夹监控异常: " + e.getMessage(), e);
+                showToast("监控异常，请检查文件夹权限");
+            } finally {
+                Log.d("RhineLT", "停止监控文件夹: " + folderPath);
+            }
+        });
+        monitoringThread.start();
+    }
+
+    private void handleFileEvent(WatchEvent<?> event, Path dir) {
+        if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
+            Path filePath = dir.resolve((Path) event.context());
+            String absPath = filePath.toAbsolutePath().toString();
+            
+            // 跳过已处理文件和翻译结果文件
+            if (absPath.contains("_translated") || !absPath.endsWith(".png")) {
+                return;
+            }
+
+            if (processedFiles.add(absPath)) {
+                Log.d("RhineLT", "检测到新文件: " + filePath);
+                handleNewFile(filePath.toFile());
+            }
+        }
+    }
+
+    private void handleNewFile(File newFile) {
+        new Thread(() -> {
+            try {
+                waitForFileReady(newFile);
+                
+                Log.d("RhineLT", "开始处理文件: " + newFile.getName());
+                detectedImagesCount.incrementAndGet();
+                mainHandler.post(() -> detectedImagesTextView.setText("已检测到 " + detectedImagesCount.get() + " 个图像"));
+                
+                uploadImageWithRetry(newFile, 3);
+            } catch (Exception e) {
+                Log.e("RhineLT", "文件处理失败: " + newFile.getName(), e);
             }
         }).start();
     }
+    
+    private void waitForFileReady(File file) throws Exception {
+        long timeout = System.currentTimeMillis() + 10000; // 10秒超时
+        long lastSize;
+        do {
+            lastSize = file.length();
+            Thread.sleep(500);
+        } while (file.length() != lastSize && System.currentTimeMillis() < timeout);
+
+        if (!file.exists() || file.length() == 0) {
+            throw new IOException("文件未就绪: " + file.getAbsolutePath());
+        }
+        Log.d("RhineLT", "文件已就绪: " + file.length() + " bytes");
+    }
+
+
+
+
 
     public static void showGlobalWindow(Application application) {
         SpringBackDraggable draggable = new SpringBackDraggable(
