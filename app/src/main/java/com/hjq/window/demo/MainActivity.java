@@ -76,7 +76,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import androidx.appcompat.app.AlertDialog;
-import com.hjq.log.LogNode;
+import java.io.FileWriter;
 
 
 public final class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -96,6 +96,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
     private TextView translatedImagesTextView;
     private AtomicInteger detectedImagesCount = new AtomicInteger(0);
     private AtomicInteger translatedImagesCount = new AtomicInteger(0);
+    private File logFile;
+    private PrintWriter logWriter;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -123,27 +125,21 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         findViewById(R.id.btn_local_translate).setOnClickListener(this);
         folderPathEditText.setText("/storage/emulated/0/Download/ManGa_Translate/");
         try {
-            File logFile = new File(getExternalFilesDir(null), "app_log.txt");
+            logFile = new File(getExternalFilesDir(null), "app_log.txt");
             if (!logFile.exists()) {
                 logFile.createNewFile();
             }
-            PrintWriter writer = new PrintWriter(new FileOutputStream(logFile, true));
-            Log.setLogNode(new LogNode() {
-                @Override
-                public void println(int priority, String tag, String msg, Throwable tr) {
-                    writer.println(tag + ": " + msg);
-                    if (tr != null) {
-                        tr.printStackTrace(writer);
-                    }
-                    writer.flush();
-                }
-            });
+            logWriter = new PrintWriter(new FileWriter(logFile, true), true);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-
+    private void logToFile(String message) {
+        if (logWriter != null) {
+            logWriter.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()) + " - " + message);
+        }
+    }
 
     private void checkPermissions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -153,6 +149,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         } else {
             startScreenCapture();
         }
+        logToFile("Checking permissions");
     }
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -164,10 +161,12 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 showToast("Permissions are required to save screenshots.");
             }
         }
+        logToFile("Permissions result received");
     }
     private void startScreenCapture() {
         Intent captureIntent = mediaProjectionManager.createScreenCaptureIntent();
         startActivityForResult(captureIntent, REQUEST_CODE_SCREEN_CAPTURE);
+        logToFile("Starting screen capture");
     }
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -183,6 +182,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
+        logToFile("Activity result received: requestCode=" + requestCode + ", resultCode=" + resultCode);
     }
     private void setupVirtualDisplay() {
         try {
@@ -204,6 +204,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             Log.e("RhineLT", "Failed to create VirtualDisplay: " + e.getMessage(), e);
             showToast("Unable to create virtual display");
         }
+        logToFile("Setting up virtual display");
     }
     private void safeCaptureFrame() {
         new Thread(() -> {
@@ -235,6 +236,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 showToast("Screenshot failed");
             }
         }).start();
+        logToFile("Capturing frame");
     }
     private Bitmap imageToBitmap(Image image) {
         try {
@@ -256,6 +258,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             Log.e("RhineLT", "Conversion failed: " + e.getMessage(), e);
             return null;
         }
+        logToFile("Converting image to bitmap");
     }
     private File saveBitmapToFile(Bitmap bitmap) throws IOException {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -270,6 +273,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             Log.d("RhineLT", "File saved successfully: " + file.length() + " bytes");
             return file;
         }
+        logToFile("Saving bitmap to file");
     }
     private void uploadImageWithRetry(File file, int maxRetries, boolean pictureView) {
         new Thread(() -> {
@@ -296,6 +300,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 Log.e("RhineLT", "The upload failed due to reaching the maximum number of retries.");
             }
         }).start();
+        logToFile("Uploading image with retry");
     }
     
     private boolean uploadImage(File file, boolean pictureView) throws IOException {
@@ -363,6 +368,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             Log.e("RhineLT", "Network request error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             throw e;
         }
+        logToFile("Uploading image: " + file.getAbsolutePath());
     }
 
 private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean pictureView) {
@@ -418,6 +424,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
             showToast("翻译结果保存失败");
         }
     }).start();
+    logToFile("Saving translated image: " + originalName);
 }
 
     private boolean isValidImage(byte[] data) {
@@ -428,6 +435,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
             Log.e("RhineLT", "Image data parsing failed: " + e.getMessage());
             return false;
         }
+        logToFile("Validating image data");
     }
     
     @Override
@@ -438,6 +446,10 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
             monitoringThread.interrupt();
         }
         releaseResources();
+        logToFile("Destroying activity");
+        if (logWriter != null) {
+            logWriter.close();
+        }
     }
 
     private void releaseResources() {
@@ -460,11 +472,13 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
         } catch (Exception e) {
             Log.e("RhineLT", "Resource release failed: " + e.getMessage(), e);
         }
+        logToFile("Releasing resources");
     }
 
 
     private void showToast(String message) {
         mainHandler.post(() -> Toaster.show(message));
+        logToFile("Showing toast: " + message);
     }
 
     @Override
@@ -501,6 +515,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
                 showToast("请指定文件夹路径");
             }
         }
+        logToFile("View clicked: " + v.getId());
     }
 
 
@@ -546,6 +561,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
             }
         });
         monitoringThread.start();
+        logToFile("Monitoring folder for images: " + folderPath);
     }
 
     private void handleFileEvent(WatchEvent<?> event, Path dir) {
@@ -563,6 +579,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
                 handleNewFile(filePath.toFile());
             }
         }
+        logToFile("Handling file event: " + event.kind());
     }
 
     private boolean isSupportedImageFile(String filePath) {
@@ -573,6 +590,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
             lowerCasePath.endsWith(".bmp") ||
             lowerCasePath.endsWith(".webp") ||  
             lowerCasePath.endsWith(".gif");
+        logToFile("Checking if supported image file: " + filePath);
     }
 
     private void handleNewFile(File newFile) {
@@ -589,6 +607,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
                 Log.e("RhineLT", "文件处理失败: " + newFile.getName(), e);
             }
         }).start();
+        logToFile("Handling new file: " + newFile.getName());
     }
     
     private void waitForFileReady(File file) throws Exception {
@@ -603,6 +622,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
             throw new IOException("文件未就绪: " + file.getAbsolutePath());
         }
         Log.d("RhineLT", "文件已就绪: " + file.length() + " bytes");
+        logToFile("Waiting for file to be ready: " + file.getAbsolutePath());
     }
 
 
@@ -628,11 +648,13 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
                     }
                 })
                 .show();
+        logToFile("Showing global window");
     }
     @Override
     public void onBackPressed() {
         super.onBackPressed();
         finish();
+        logToFile("Back pressed");
     }
 
 }
