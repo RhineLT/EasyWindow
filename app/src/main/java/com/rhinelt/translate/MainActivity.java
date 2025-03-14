@@ -106,15 +106,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         mediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         checkPermissions();
         findViewById(R.id.btn_main_global).setOnClickListener(this);
-        TitleBar titleBar = findViewById(R.id.tb_main_bar);
-        titleBar.setOnTitleBarListener(new OnTitleBarListener() {
-            @Override
-            public void onTitleClick(TitleBar titleBar) {
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(Uri.parse(titleBar.getTitle().toString()));
-                startActivity(intent);
-            }
-        });
         urlEditText = findViewById(R.id.et_url);
         detectorEditText = findViewById(R.id.et_detector);
         detectionSizeEditText = findViewById(R.id.et_detection_size);
