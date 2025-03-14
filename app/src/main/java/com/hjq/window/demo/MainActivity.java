@@ -341,44 +341,60 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
-    private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean pictureView) {
-        Log.d("RhineLT", "Start saving translated image, original file name:" + originalName + 
-            ", Data length: " + imageBytes.length + " bytes");
-        
-        if (!isValidImage(imageBytes)) {
-            Log.e("RhineLT", "Invalid image data");
-            showToast("收到无效的图片数据");
-            return;
-        }
-        
-        new Thread(() -> {
-            try {
-                String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-                File file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-                        "TRANSLATED_" + originalName + ".png");
-                try (FileOutputStream out = new FileOutputStream(file)) {
-                    out.write(imageBytes);
-                    out.flush();
-                    Log.d("RhineLT", "Translation saved successfully: " + file.getAbsolutePath());
-                    
-                    if (pictureView) {
-                        // 使用 FileProvider 生成 content URI
-                        Uri uri = FileProvider.getUriForFile(this, "com.hjq.window.demo.fileprovider", file);
-                        
-                        // 调用系统打开图像
-                        Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setDataAndType(uri, "image/png");
-                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        startActivity(intent);
-                    }
-                    
-                }
-            } catch (Exception e) {
-                Log.e("RhineLT", "Failed to save: " + e.getMessage(), e);
-                showToast("翻译结果保存失败");
-            }
-        }).start();
+private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean pictureView) {
+    Log.d("RhineLT", "Start saving translated image, original file name:" + originalName + 
+        ", Data length: " + imageBytes.length + " bytes");
+    
+    if (!isValidImage(imageBytes)) {
+        Log.e("RhineLT", "Invalid image data");
+        showToast("收到无效的图片数据");
+        return;
     }
+    
+    new Thread(() -> {
+        try {
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+            File directory = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+            if (!directory.exists() && !directory.mkdirs()) {
+                throw new IOException("Unable to create directory: " + directory.getAbsolutePath());
+            }
+            File file = new File(directory, "TRANSLATED_" + originalName + ".png");
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                out.write(imageBytes);
+                out.flush();
+                Log.d("RhineLT", "Translation saved successfully: " + file.getAbsolutePath());
+                
+                if (pictureView) {
+                    // 使用 FileProvider 生成 content URI
+                    Uri uri = FileProvider.getUriForFile(this, "com.hjq.window.demo.fileprovider", file);
+                    
+                    // 调用系统打开图像
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setDataAndType(uri, "image/png");
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(intent);
+                } else {
+                    // 将翻译后的图像保存到指定的本地目录
+                    String folderPath = folderPathEditText.getText().toString();
+                    File localDirectory = new File(folderPath);
+                    if (!localDirectory.exists() && !localDirectory.mkdirs()) {
+                        throw new IOException("Unable to create local directory: " + localDirectory.getAbsolutePath());
+                    }
+                    File localFile = new File(localDirectory, "TRANSLATED_" + originalName + ".png");
+                    try (FileOutputStream localOut = new FileOutputStream(localFile)) {
+                        localOut.write(imageBytes);
+                        localOut.flush();
+                        Log.d("RhineLT", "Translation saved to local directory: " + localFile.getAbsolutePath());
+                    }
+                }
+                
+            }
+        } catch (Exception e) {
+            Log.e("RhineLT", "Failed to save: " + e.getMessage(), e);
+            showToast("翻译结果保存失败");
+        }
+    }).start();
+}
 
     private boolean isValidImage(byte[] data) {
         try {
