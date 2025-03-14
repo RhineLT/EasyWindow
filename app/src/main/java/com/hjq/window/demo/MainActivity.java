@@ -260,6 +260,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             return null;
         }
     }
+    
     private File saveBitmapToFile(Bitmap bitmap) throws IOException {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         File directory = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
