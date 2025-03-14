@@ -120,7 +120,29 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         translatedImagesTextView = findViewById(R.id.tv_translated_images);
         findViewById(R.id.btn_local_translate).setOnClickListener(this);
         folderPathEditText.setText("/storage/emulated/0/Download/ManGa_Translate/");
+        try {
+            File logFile = new File(getExternalFilesDir(null), "app_log.txt");
+            if (!logFile.exists()) {
+                logFile.createNewFile();
+            }
+            PrintWriter writer = new PrintWriter(new FileOutputStream(logFile, true));
+            Log.setLogNode(new LogNode() {
+                @Override
+                public void println(int priority, String tag, String msg, Throwable tr) {
+                    writer.println(tag + ": " + msg);
+                    if (tr != null) {
+                        tr.printStackTrace(writer);
+                    }
+                    writer.flush();
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
+
+
+
     private void checkPermissions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, 
