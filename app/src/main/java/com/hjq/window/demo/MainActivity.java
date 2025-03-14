@@ -119,6 +119,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         detectedImagesTextView = findViewById(R.id.tv_detected_images);
         translatedImagesTextView = findViewById(R.id.tv_translated_images);
         findViewById(R.id.btn_local_translate).setOnClickListener(this);
+        folderPathEditText.setText("/storage/emulated/0/Download/ManGa_Translate/");
     }
     private void checkPermissions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -353,7 +354,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             try {
                 String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
                 File file = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-                        "TRANSLATED_" + timeStamp + ".png");
+                        "TRANSLATED_" + originalName + ".png");
                 try (FileOutputStream out = new FileOutputStream(file)) {
                     out.write(imageBytes);
                     out.flush();
@@ -450,6 +451,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             }
         }
     }
+
     private final Set<String> processedFiles = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private volatile boolean isMonitoring = false;
     private Thread monitoringThread;
@@ -500,7 +502,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             String absPath = filePath.toAbsolutePath().toString();
             
             // 跳过已处理文件和翻译结果文件
-            if (absPath.contains("_translated") || !absPath.endsWith(".png")) {
+            if (absPath.contains("TRANSLATED_") || !absPath.endsWith(".png")) {
                 return;
             }
 
@@ -520,7 +522,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 detectedImagesCount.incrementAndGet();
                 mainHandler.post(() -> detectedImagesTextView.setText("已检测到 " + detectedImagesCount.get() + " 个图像"));
                 
-                uploadImageWithRetry(newFile, 3);
+                uploadImageWithRetry(newFile, 1);
             } catch (Exception e) {
                 Log.e("RhineLT", "文件处理失败: " + newFile.getName(), e);
             }
