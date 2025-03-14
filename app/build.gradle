@@ -4,7 +4,7 @@ android {
     compileSdkVersion 33
 
     defaultConfig {
-        applicationId "com.hjq.window.demo"
+        applicationId "com.rhinelt.translate"
         minSdkVersion 16
         targetSdkVersion 28
         versionCode 1120

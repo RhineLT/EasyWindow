@@ -1,4 +1,4 @@
-package com.hjq.window.demo;
+package com.rhinelt.translate;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
@@ -397,7 +397,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
                 
                 if (pictureView) {
                     // 使用 FileProvider 生成 content URI
-                    Uri uri = FileProvider.getUriForFile(this, "com.hjq.window.demo.fileprovider", file);
+                    Uri uri = FileProvider.getUriForFile(this, "com.rhinelt.translate.fileprovider", file);
                     
                     // 调用系统打开图像
                     Intent intent = new Intent(Intent.ACTION_VIEW);

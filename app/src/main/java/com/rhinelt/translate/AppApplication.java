@@ -1,4 +1,4 @@
-package com.hjq.window.demo;
+package com.rhinelt.translate;
 
 import android.app.Application;
 

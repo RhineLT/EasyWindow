@@ -8,13 +8,6 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <com.hjq.bar.TitleBar
-        android:id="@+id/tb_main_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:leftIcon="@null"
-        app:title="https://github.com/getActivity/EasyWindow" />
-
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"

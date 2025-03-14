@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.hjq.window.demo">
+    package="com.rhinelt.translate">
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -30,7 +30,7 @@
         </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.hjq.window.demo.fileprovider"
+            android:authorities="com.rhinelt.translate.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
