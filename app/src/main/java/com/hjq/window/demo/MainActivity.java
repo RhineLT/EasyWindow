@@ -479,6 +479,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
         }
     }
 
+
     private final Set<String> processedFiles = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private volatile boolean isMonitoring = false;
     private Thread monitoringThread;
