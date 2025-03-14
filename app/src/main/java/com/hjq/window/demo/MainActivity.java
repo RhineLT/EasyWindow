@@ -643,12 +643,12 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
                     if (activity != null && !activity.isFinishing()) {
                         activity.safeCaptureFrame();
                         Toaster.show("正在翻译...");
+                        activity.logToFile("Showing global window"); // 将 logToFile 调用移到非静态上下文中
                     } else {
                         Toaster.show("当前无法截图");
                     }
                 })
                 .show();
-        logToFile("Showing global window");
     }
     @Override
     public void onBackPressed() {
