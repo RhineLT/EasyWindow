@@ -198,7 +198,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                             File file = saveBitmapToFile(bitmap);
                             if (file != null) {
                                 Log.d("RhineLT", "Screenshot saved successfully, path:" + file.getAbsolutePath());
-                                uploadImageWithRetry(file, 1);
+                                uploadImageWithRetry(file, 1, true);
                             }
                         } catch (Exception e) {
                             Log.e("RhineLT", "Processing failed: " + e.getMessage(), e);
@@ -247,7 +247,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             return file;
         }
     }
-    private void uploadImageWithRetry(File file, int maxRetries) {
+    private void uploadImageWithRetry(File file, int maxRetries, boolean pictureView) {
         new Thread(() -> {
             int retryCount = 0;
             boolean success = false;
@@ -255,7 +255,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             while (retryCount < maxRetries && !success) {
                 try {
                     Log.d("RhineLT", "Upload attempt (" + (retryCount+1) + ") time)");
-                    success = uploadImage(file);
+                    success = uploadImage(file, pictureView);
                     if (!success) {
                         Log.w("RhineLT", "Attempted "+(retryCount+1)+" failures");
                         retryCount++;
@@ -273,7 +273,8 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             }
         }).start();
     }
-    private boolean uploadImage(File file) throws IOException {
+    
+    private boolean uploadImage(File file, boolean pictureView) throws IOException {
         Log.d("RhineLT", "Ready to upload file: " + file.getAbsolutePath() + 
             ", size: " + file.length() + " bytes");
         OkHttpClient client = new OkHttpClient.Builder()
@@ -281,13 +282,13 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .build();
-    
+
         String urlPrefix = urlEditText.getText().toString().isEmpty() ? "http://10.243.3.100:7500" : urlEditText.getText().toString();
         String url = urlPrefix + "/translate/with-form/image";
         String detector = detectorEditText.getText().toString().isEmpty() ? "default" : detectorEditText.getText().toString();
         String detectionSize = detectionSizeEditText.getText().toString().isEmpty() ? "1536" : detectionSizeEditText.getText().toString();
         String translator = translatorEditText.getText().toString().isEmpty() ? "gpt3.5" : translatorEditText.getText().toString();
-    
+
         String configJson = "{ \"detector\": { \"detector\": \"" + detector + "\", \"detection_size\": " + detectionSize + " }, \"render\": { \"direction\": \"auto\" }, \"translator\": { \"translator\": \"" + translator + "\", \"target_lang\": \"CHS\" } }";
         
         RequestBody body = new MultipartBody.Builder()
@@ -306,7 +307,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 .addHeader("Connection", "keep-alive")
                 .addHeader("content-type", "multipart/form-data;")
                 .build();
-    
+
         Log.d("RhineLT", "Initiate request => URL: " + request.url());
         Log.d("RhineLT", "Headers: " + request.headers());
         try (Response response = client.newCall(request).execute()) {
@@ -330,7 +331,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     return false;
                 }
                 
-                saveTranslatedImage(bytes, file.getName());
+                saveTranslatedImage(bytes, file.getName(), pictureView);
                 return true;
             }
             return false;
@@ -340,7 +341,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
         }
     }
 
-    private void saveTranslatedImage(byte[] imageBytes, String originalName) {
+    private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean pictureView) {
         Log.d("RhineLT", "Start saving translated image, original file name:" + originalName + 
             ", Data length: " + imageBytes.length + " bytes");
         
@@ -360,14 +361,16 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     out.flush();
                     Log.d("RhineLT", "Translation saved successfully: " + file.getAbsolutePath());
                     
-                    // 使用 FileProvider 生成 content URI
-                    Uri uri = FileProvider.getUriForFile(this, "com.hjq.window.demo.fileprovider", file);
-                    
-                    // 调用系统打开图像
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setDataAndType(uri, "image/png");
-                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    startActivity(intent);
+                    if (pictureView) {
+                        // 使用 FileProvider 生成 content URI
+                        Uri uri = FileProvider.getUriForFile(this, "com.hjq.window.demo.fileprovider", file);
+                        
+                        // 调用系统打开图像
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setDataAndType(uri, "image/png");
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(intent);
+                    }
                     
                 }
             } catch (Exception e) {
@@ -522,7 +525,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 detectedImagesCount.incrementAndGet();
                 mainHandler.post(() -> detectedImagesTextView.setText("已检测到 " + detectedImagesCount.get() + " 个图像"));
                 
-                uploadImageWithRetry(newFile, 1);
+                uploadImageWithRetry(newFile, 1, false);
             } catch (Exception e) {
                 Log.e("RhineLT", "文件处理失败: " + newFile.getName(), e);
             }
