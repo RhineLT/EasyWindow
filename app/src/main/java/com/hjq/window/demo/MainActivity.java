@@ -253,12 +253,12 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                     Bitmap.Config.ARGB_8888);
             bitmap.copyPixelsFromBuffer(buffer);
             Log.d("RhineLT", "Image conversion successful, dimensions: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+            logToFile("Converting image to bitmap");
             return bitmap;
         } catch (Exception e) {
             Log.e("RhineLT", "Conversion failed: " + e.getMessage(), e);
             return null;
         }
-        logToFile("Converting image to bitmap");
     }
     private File saveBitmapToFile(Bitmap bitmap) throws IOException {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -271,9 +271,9 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
             out.flush();
             Log.d("RhineLT", "File saved successfully: " + file.length() + " bytes");
+            logToFile("Saving bitmap to file");
             return file;
         }
-        logToFile("Saving bitmap to file");
     }
     private void uploadImageWithRetry(File file, int maxRetries, boolean pictureView) {
         new Thread(() -> {
@@ -361,6 +361,7 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
                 }
                 
                 saveTranslatedImage(bytes, file.getName(), pictureView);
+                logToFile("Uploading image: " + file.getAbsolutePath());
                 return true;
             }
             return false;
@@ -368,7 +369,6 @@ public final class MainActivity extends AppCompatActivity implements View.OnClic
             Log.e("RhineLT", "Network request error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             throw e;
         }
-        logToFile("Uploading image: " + file.getAbsolutePath());
     }
 
 private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean pictureView) {
@@ -430,12 +430,12 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
     private boolean isValidImage(byte[] data) {
         try {
             BitmapFactory.decodeByteArray(data, 0, data.length);
+            logToFile("Validating image data");
             return true;
         } catch (Exception e) {
             Log.e("RhineLT", "Image data parsing failed: " + e.getMessage());
             return false;
         }
-        logToFile("Validating image data");
     }
     
     @Override
@@ -584,13 +584,14 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
 
     private boolean isSupportedImageFile(String filePath) {
         String lowerCasePath = filePath.toLowerCase();
-        return lowerCasePath.endsWith(".png") || 
+        boolean result = lowerCasePath.endsWith(".png") || 
             lowerCasePath.endsWith(".jpg") || 
             lowerCasePath.endsWith(".jpeg") || 
             lowerCasePath.endsWith(".bmp") ||
             lowerCasePath.endsWith(".webp") ||  
             lowerCasePath.endsWith(".gif");
         logToFile("Checking if supported image file: " + filePath);
+        return result;
     }
 
     private void handleNewFile(File newFile) {
