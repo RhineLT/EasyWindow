@@ -530,7 +530,7 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
             String absPath = filePath.toAbsolutePath().toString();
             
             // 跳过已处理文件和翻译结果文件
-            if (absPath.contains("TRANSLATED_") || !absPath.endsWith(".png")) {
+            if (absPath.contains("TRANSLATED_") || !isSupportedImageFile(absPath)) {
                 return;
             }
 
@@ -539,6 +539,16 @@ private void saveTranslatedImage(byte[] imageBytes, String originalName, boolean
                 handleNewFile(filePath.toFile());
             }
         }
+    }
+
+    private boolean isSupportedImageFile(String filePath) {
+        String lowerCasePath = filePath.toLowerCase();
+        return lowerCasePath.endsWith(".png") || 
+            lowerCasePath.endsWith(".jpg") || 
+            lowerCasePath.endsWith(".jpeg") || 
+            lowerCasePath.endsWith(".bmp") ||
+            lowerCasePath.endsWith(".webp") ||  
+            lowerCasePath.endsWith(".gif");
     }
 
     private void handleNewFile(File newFile) {
